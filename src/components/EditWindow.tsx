@@ -11,11 +11,11 @@ type EditWindowProps = {
   saveState: "saved" | "saving";
   onDraftChange: (value: string) => void;
   onApplyTemplate: (template: TemplateItem, cursorStart?: number, cursorEnd?: number) => void;
-  onSubmit: () => void;
+  onSubmit: () => void | Promise<void>;
   onOpenManage: () => void;
   onOpenHistory: () => void;
   onSaveTemplate: () => void;
-  onExitEdit: () => void;
+  onExitEdit: () => void | Promise<void>;
 };
 
 const estimateTokens = (value: string) => {
@@ -60,6 +60,10 @@ export function EditWindow({
   const tokenCount = estimateTokens(draft);
 
   useEffect(() => {
+    editorRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
     if (selectedIndex >= filteredTemplates.length) {
       setSelectedIndex(Math.max(0, filteredTemplates.length - 1));
     }
@@ -88,7 +92,7 @@ export function EditWindow({
         return;
       }
 
-      if (event.ctrlKey && event.key === "p") {
+      if (event.ctrlKey && event.key.toLowerCase() === "p") {
         event.preventDefault();
         setPaletteOpen(true);
       }
@@ -103,7 +107,7 @@ export function EditWindow({
       }
       if (event.ctrlKey && event.key === "Enter") {
         event.preventDefault();
-        onSubmit();
+        void onSubmit();
       }
       if (event.ctrlKey && event.key.toLowerCase() === "h") {
         event.preventDefault();
@@ -111,7 +115,7 @@ export function EditWindow({
       }
       if (event.key === "Escape") {
         event.preventDefault();
-        onExitEdit();
+        void onExitEdit();
       }
     };
 
@@ -147,7 +151,7 @@ export function EditWindow({
       />
 
       <div className="edit-corner-actions" onPointerDown={(event) => event.stopPropagation()}>
-        <button className="icon-button subtle" type="button" onClick={onOpenManage} title="打开管理窗口 Ctrl+,">
+        <button className="icon-button subtle" type="button" onClick={onOpenManage} title="打开工作台 Ctrl+,">
           <Settings size={18} />
         </button>
       </div>

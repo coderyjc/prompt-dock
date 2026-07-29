@@ -15,7 +15,8 @@ import {
   Trash2,
   Upload
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { startWindowDrag } from "../lib/desktop";
 import type { HistoryItem, SettingsState, ShortcutItem, TemplateItem } from "../types";
 
 type Section = "templates" | "history" | "shortcuts" | "output" | "appearance" | "data";
@@ -56,9 +57,18 @@ export function ManageWindow({
   onRestoreHistory,
   onOpenEdit
 }: ManageWindowProps) {
-  const [section, setSection] = useState<Section>("templates");
+  const [activeSection, setActiveSection] = useState<Section>("templates");
+  const [visibleSection, setVisibleSection] = useState<Section>("templates");
+  const [contentPhase, setContentPhase] = useState<"ready" | "leaving" | "entering">("ready");
   const [query, setQuery] = useState("");
   const [selectedTemplateId, setSelectedTemplateId] = useState(templates[0]?.id ?? "");
+  const [historyClearArmed, setHistoryClearArmed] = useState(false);
+  const [navIndicator, setNavIndicator] = useState({ top: 0, height: 0 });
+  const navRef = useRef<HTMLElement | null>(null);
+  const navButtonRefs = useRef<Partial<Record<Section, HTMLButtonElement>>>({});
+  const switchTimer = useRef<number | undefined>(undefined);
+  const settleTimer = useRef<number | undefined>(undefined);
+  const historyClearTimer = useRef<number | undefined>(undefined);
 
   const selectedTemplate = templates.find((template) => template.id === selectedTemplateId) ?? templates[0];
   const filteredTemplates = useMemo(() => {
@@ -101,8 +111,63 @@ export function ManageWindow({
     setSelectedTemplateId(next[0]?.id ?? "");
   };
 
-  const renderContent = () => {
-    if (section === "templates") {
+  const switchSection = (nextSection: Section) => {
+    if (nextSection === activeSection) return;
+
+    window.clearTimeout(switchTimer.current);
+    window.clearTimeout(settleTimer.current);
+    setActiveSection(nextSection);
+    setContentPhase("leaving");
+
+    switchTimer.current = window.setTimeout(() => {
+      setVisibleSection(nextSection);
+      setContentPhase("entering");
+      settleTimer.current = window.setTimeout(() => setContentPhase("ready"), 300);
+    }, 170);
+  };
+
+  const requestClearHistory = () => {
+    if (historyClearArmed) {
+      window.clearTimeout(historyClearTimer.current);
+      setHistoryClearArmed(false);
+      onHistoryChange([]);
+      return;
+    }
+
+    setHistoryClearArmed(true);
+    window.clearTimeout(historyClearTimer.current);
+    historyClearTimer.current = window.setTimeout(() => setHistoryClearArmed(false), 3200);
+  };
+
+  useEffect(() => {
+    return () => {
+      window.clearTimeout(switchTimer.current);
+      window.clearTimeout(settleTimer.current);
+      window.clearTimeout(historyClearTimer.current);
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    const updateIndicator = () => {
+      const nav = navRef.current;
+      const button = navButtonRefs.current[activeSection];
+      if (!nav || !button) return;
+
+      const navRect = nav.getBoundingClientRect();
+      const buttonRect = button.getBoundingClientRect();
+      setNavIndicator({
+        top: buttonRect.top - navRect.top,
+        height: buttonRect.height
+      });
+    };
+
+    updateIndicator();
+    window.addEventListener("resize", updateIndicator);
+    return () => window.removeEventListener("resize", updateIndicator);
+  }, [activeSection]);
+
+  const renderContent = (currentSection: Section) => {
+    if (currentSection === "templates") {
       return (
         <div className="manage-content-grid">
           <section className="list-panel" aria-label="模板列表">
@@ -183,7 +248,7 @@ export function ManageWindow({
       );
     }
 
-    if (section === "history") {
+    if (currentSection === "history") {
       return (
         <section className="single-panel">
           <div className="detail-heading">
@@ -191,9 +256,14 @@ export function ManageWindow({
               <p className="eyebrow">草稿与提交记录</p>
               <h2>历史</h2>
             </div>
-            <button className="tool-button" type="button" onClick={() => onHistoryChange([])}>
+            <button
+              className={`tool-button ${historyClearArmed ? "danger" : ""}`}
+              type="button"
+              disabled={history.length === 0}
+              onClick={requestClearHistory}
+            >
               <Trash2 size={16} />
-              清理历史
+              {historyClearArmed ? "确认清理历史" : "清理历史"}
             </button>
           </div>
           <div className="history-list">
@@ -211,7 +281,7 @@ export function ManageWindow({
       );
     }
 
-    if (section === "shortcuts") {
+    if (currentSection === "shortcuts") {
       return (
         <section className="single-panel">
           <div className="detail-heading">
@@ -237,7 +307,7 @@ export function ManageWindow({
       );
     }
 
-    if (section === "output") {
+    if (currentSection === "output") {
       return (
         <section className="single-panel">
           <div className="detail-heading">
@@ -272,7 +342,7 @@ export function ManageWindow({
       );
     }
 
-    if (section === "appearance") {
+    if (currentSection === "appearance") {
       return (
         <section className="single-panel">
           <div className="detail-heading">
@@ -326,20 +396,43 @@ export function ManageWindow({
   };
 
   return (
-    <main className="manage-shell" aria-label="Prompt Dock 管理窗口">
+    <main className="manage-shell" aria-label="工作台">
+      <button
+        className="workbench-drag-strip"
+        type="button"
+        title="拖动移动工作台"
+        onPointerDown={(event) => {
+          event.preventDefault();
+          void startWindowDrag();
+        }}
+      />
       <aside className="sidebar">
         <div className="brand-block">
           <span className="app-mark">PD</span>
           <div>
-            <strong>Prompt Dock</strong>
+            <strong>工作台</strong>
             <span>本地 prompt 工作台</span>
           </div>
         </div>
-        <nav>
+        <nav className="workbench-tabs" ref={navRef}>
+          <span
+            className="nav-indicator"
+            style={{
+              height: `${navIndicator.height}px`,
+              transform: `translateY(${navIndicator.top}px)`
+            }}
+          />
           {navItems.map((item) => {
             const Icon = item.icon;
             return (
-              <button key={item.id} className={section === item.id ? "is-active" : ""} onClick={() => setSection(item.id)}>
+              <button
+                key={item.id}
+                ref={(node) => {
+                  if (node) navButtonRefs.current[item.id] = node;
+                }}
+                className={activeSection === item.id ? "is-active" : ""}
+                onClick={() => switchSection(item.id)}
+              >
                 <Icon size={18} />
                 {item.label}
               </button>
@@ -350,7 +443,11 @@ export function ManageWindow({
           打开编辑窗口
         </button>
       </aside>
-      <div className="manage-content">{renderContent()}</div>
+      <div className="manage-content">
+        <div key={visibleSection} className={`manage-content-motion is-${contentPhase}`}>
+          {renderContent(visibleSection)}
+        </div>
+      </div>
     </main>
   );
 }

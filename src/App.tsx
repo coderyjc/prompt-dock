@@ -38,6 +38,26 @@ export function App() {
     document.documentElement.dataset.theme = settings.theme;
   }, [settings.theme]);
 
+  useEffect(() => {
+    document.documentElement.dataset.window = mode;
+  }, [mode]);
+
+  useEffect(() => {
+    const preventContextMenu = (event: MouseEvent) => event.preventDefault();
+    const preventPrintShortcut = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "p") {
+        event.preventDefault();
+      }
+    };
+
+    window.addEventListener("contextmenu", preventContextMenu);
+    window.addEventListener("keydown", preventPrintShortcut, true);
+    return () => {
+      window.removeEventListener("contextmenu", preventContextMenu);
+      window.removeEventListener("keydown", preventPrintShortcut, true);
+    };
+  }, []);
+
   const updateTemplateUsage = (target: TemplateItem) => {
     setTemplates((items) =>
       items.map((item) =>

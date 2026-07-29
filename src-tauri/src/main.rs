@@ -36,13 +36,22 @@ fn hide_edit_window(app: AppHandle) -> Result<(), String> {
     window.hide().map_err(|error| error.to_string())
 }
 
+#[tauri::command]
+fn hide_manage_window(app: AppHandle) -> Result<(), String> {
+    let window = app
+        .get_webview_window("manage")
+        .ok_or_else(|| "manage window not found".to_string())?;
+    window.hide().map_err(|error| error.to_string())
+}
+
 fn show_window(app: &AppHandle, label: &str) -> Result<(), String> {
     let window = app
         .get_webview_window(label)
         .ok_or_else(|| format!("{label} window not found"))?;
     let _ = window.unminimize();
     window.show().map_err(|error| error.to_string())?;
-    window.set_focus().map_err(|error| error.to_string())
+    window.set_focus().map_err(|error| error.to_string())?;
+    Ok(())
 }
 
 fn show_edit_window(app: &AppHandle) -> Result<(), String> {
@@ -52,7 +61,8 @@ fn show_edit_window(app: &AppHandle) -> Result<(), String> {
     let _ = window.unminimize();
     let _ = window.center();
     window.show().map_err(|error| error.to_string())?;
-    window.set_focus().map_err(|error| error.to_string())
+    window.set_focus().map_err(|error| error.to_string())?;
+    Ok(())
 }
 
 fn toggle_edit_window(app: &AppHandle) -> Result<(), String> {
@@ -61,17 +71,19 @@ fn toggle_edit_window(app: &AppHandle) -> Result<(), String> {
         .ok_or_else(|| "edit window not found".to_string())?;
 
     if window.is_visible().map_err(|error| error.to_string())? {
-        window.hide().map_err(|error| error.to_string())
+        window.hide().map_err(|error| error.to_string())?;
+        Ok(())
     } else {
         let _ = window.center();
         window.show().map_err(|error| error.to_string())?;
-        window.set_focus().map_err(|error| error.to_string())
+        window.set_focus().map_err(|error| error.to_string())?;
+        Ok(())
     }
 }
 
 fn build_tray(app: &tauri::App) -> tauri::Result<()> {
     let open_edit = MenuItem::with_id(app, "open_edit", "打开编辑窗口", true, None::<&str>)?;
-    let open_manage = MenuItem::with_id(app, "open_manage", "打开管理窗口", true, None::<&str>)?;
+    let open_manage = MenuItem::with_id(app, "open_manage", "打开工作台", true, None::<&str>)?;
     let pause_shortcuts = MenuItem::with_id(app, "pause_shortcuts", "暂停快捷键", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&open_edit, &open_manage, &pause_shortcuts, &quit])?;
@@ -139,6 +151,7 @@ fn main() {
             submit_prompt,
             open_manage_window,
             open_edit_window,
+            hide_manage_window,
             hide_edit_window
         ])
         .on_window_event(|window, event| {

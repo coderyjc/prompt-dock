@@ -24,7 +24,7 @@ export type ShortcutItem = {
   id: string;
   action: string;
   keys: string;
-  scope: "全局" | "编辑窗口" | "管理窗口";
+  scope: "全局" | "编辑窗口" | "工作台";
   locked?: boolean;
 };
 

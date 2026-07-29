@@ -29,7 +29,7 @@ export const openManageWindow = async () => {
   try {
     await invokeCommand("open_manage_window");
   } catch {
-    window.open(`${window.location.origin}${window.location.pathname}?window=manage`, "prompt-dock-manage", "width=920,height=640");
+    window.open(`${window.location.origin}${window.location.pathname}?window=manage`, "prompt-dock-workbench", "width=1080,height=720");
   }
 };
 
@@ -38,6 +38,14 @@ export const openEditWindow = async () => {
     await invokeCommand("open_edit_window");
   } catch {
     window.open(`${window.location.origin}${window.location.pathname}?window=edit`, "prompt-dock-edit", "width=760,height=520");
+  }
+};
+
+export const hideManageWindow = async () => {
+  try {
+    await invokeCommand("hide_manage_window");
+  } catch {
+    return undefined;
   }
 };
 
