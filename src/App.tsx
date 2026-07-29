@@ -1,0 +1,150 @@
+import { useEffect, useMemo, useState } from "react";
+import { defaultHistory, defaultSettings, defaultShortcuts, defaultTemplates, nowIso } from "./data/defaults";
+import { copyText, hideEditWindow, openEditWindow, openManageWindow } from "./lib/desktop";
+import { storageKeys, usePersistentState, writeValue } from "./lib/persistence";
+import { EditWindow } from "./components/EditWindow";
+import { ManageWindow } from "./components/ManageWindow";
+import type { HistoryItem, SettingsState, TemplateItem, WindowMode } from "./types";
+
+const readInitialMode = (): WindowMode => {
+  const mode = new URLSearchParams(window.location.search).get("window");
+  return mode === "manage" ? "manage" : "edit";
+};
+
+const makeHistory = (body: string, action: HistoryItem["action"]): HistoryItem => ({
+  id: `hist-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+  body,
+  action,
+  createdAt: nowIso()
+});
+
+export function App() {
+  const [mode] = useState<WindowMode>(() => readInitialMode());
+  const [draft, setDraft] = usePersistentState(storageKeys.draft, "");
+  const [templates, setTemplates] = usePersistentState(storageKeys.templates, defaultTemplates);
+  const [history, setHistory] = usePersistentState(storageKeys.history, defaultHistory);
+  const [settings, setSettings] = usePersistentState<SettingsState>(storageKeys.settings, defaultSettings);
+  const [saveState, setSaveState] = useState<"saved" | "saving">("saved");
+
+  const sortedHistory = useMemo(() => [...history].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 120), [history]);
+
+  useEffect(() => {
+    setSaveState("saving");
+    const timeout = window.setTimeout(() => setSaveState("saved"), settings.autoSaveMs);
+    return () => window.clearTimeout(timeout);
+  }, [draft, settings.autoSaveMs]);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = settings.theme;
+  }, [settings.theme]);
+
+  const updateTemplateUsage = (target: TemplateItem) => {
+    setTemplates((items) =>
+      items.map((item) =>
+        item.id === target.id ? { ...item, usageCount: item.usageCount + 1, lastUsedAt: nowIso() } : item
+      )
+    );
+  };
+
+  const applyTemplate = (template: TemplateItem, cursorStart?: number, cursorEnd?: number) => {
+    const start = cursorStart ?? draft.length;
+    const end = cursorEnd ?? draft.length;
+    const prefix = draft.slice(0, start);
+    const suffix = draft.slice(end);
+    const spacerBefore = prefix && !prefix.endsWith("\n") ? "\n\n" : "";
+    const spacerAfter = suffix && !template.body.endsWith("\n") ? "\n\n" : "";
+    const nextDraft = `${prefix}${spacerBefore}${template.body}${spacerAfter}${suffix}`;
+    setDraft(nextDraft);
+    writeValue(storageKeys.draft, nextDraft);
+    updateTemplateUsage(template);
+  };
+
+  const handleSubmit = async () => {
+    if (!draft.trim()) {
+      await exitEdit();
+      return;
+    }
+
+    const committedDraft = draft;
+    const ok = await copyText(committedDraft);
+    if (!ok) return;
+
+    setHistory((items) => [makeHistory(committedDraft, "copied"), ...items].slice(0, 120));
+    setDraft("");
+    writeValue(storageKeys.draft, "");
+    setSaveState("saved");
+    await hideEditWindow();
+  };
+
+  const handleSaveTemplate = () => {
+    if (!draft.trim()) return;
+    const next: TemplateItem = {
+      id: `tpl-${Date.now()}`,
+      title: `固定模板 ${templates.length + 1}`,
+      description: "从当前编辑内容保存。",
+      body: draft,
+      tags: ["自定义"],
+      isFavorite: false,
+      usageCount: 0,
+      updatedAt: nowIso()
+    };
+    setTemplates((items) => [next, ...items]);
+  };
+
+  const openManage = async () => {
+    await openManageWindow();
+  };
+
+  const openEdit = async () => {
+    await openEditWindow();
+  };
+
+  const restoreHistory = async (item: HistoryItem) => {
+    setDraft(item.body);
+    writeValue(storageKeys.draft, item.body);
+    await openEditWindow();
+  };
+
+  const exitEdit = async () => {
+    writeValue(storageKeys.draft, draft);
+    setSaveState("saved");
+    await hideEditWindow();
+  };
+
+  if (mode === "manage") {
+    return (
+      <ManageWindow
+        draft={draft}
+        templates={templates}
+        history={sortedHistory}
+        shortcuts={defaultShortcuts}
+        settings={settings}
+        onTemplatesChange={setTemplates}
+        onHistoryChange={setHistory}
+        onSettingsChange={setSettings}
+        onUseTemplate={(template) => {
+          applyTemplate(template);
+          openEdit();
+        }}
+        onRestoreHistory={restoreHistory}
+        onOpenEdit={openEdit}
+      />
+    );
+  }
+
+  return (
+    <EditWindow
+      draft={draft}
+      templates={templates}
+      history={sortedHistory}
+      saveState={saveState}
+      onDraftChange={setDraft}
+      onApplyTemplate={applyTemplate}
+      onSubmit={handleSubmit}
+      onOpenManage={openManage}
+      onOpenHistory={openManage}
+      onSaveTemplate={handleSaveTemplate}
+      onExitEdit={exitEdit}
+    />
+  );
+}

@@ -1,0 +1,50 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Prompt Dock",
+  "version": "0.1.0",
+  "identifier": "com.promptdock.desktop",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://127.0.0.1:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "edit",
+        "title": "Prompt Dock",
+        "url": "index.html?window=edit",
+        "width": 760,
+        "height": 520,
+        "minWidth": 520,
+        "minHeight": 360,
+        "resizable": true,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "visible": false
+      },
+      {
+        "label": "manage",
+        "title": "Prompt Dock",
+        "url": "index.html?window=manage",
+        "width": 920,
+        "height": 640,
+        "minWidth": 760,
+        "minHeight": 520,
+        "resizable": true,
+        "decorations": true,
+        "visible": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": ["icons/icon.ico"]
+  }
+}

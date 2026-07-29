@@ -1,0 +1,189 @@
+import { Settings } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { HistoryItem, TemplateItem } from "../types";
+import { TemplatePalette } from "./TemplatePalette";
+import { startWindowDrag } from "../lib/desktop";
+
+type EditWindowProps = {
+  draft: string;
+  templates: TemplateItem[];
+  history: HistoryItem[];
+  saveState: "saved" | "saving";
+  onDraftChange: (value: string) => void;
+  onApplyTemplate: (template: TemplateItem, cursorStart?: number, cursorEnd?: number) => void;
+  onSubmit: () => void;
+  onOpenManage: () => void;
+  onOpenHistory: () => void;
+  onSaveTemplate: () => void;
+  onExitEdit: () => void;
+};
+
+const estimateTokens = (value: string) => {
+  const chinese = (value.match(/[\u4e00-\u9fff]/g) || []).length;
+  const words = value.replace(/[\u4e00-\u9fff]/g, " ").trim().split(/\s+/).filter(Boolean).length;
+  return Math.max(0, Math.ceil(chinese * 0.75 + words * 1.3));
+};
+
+export function EditWindow({
+  draft,
+  templates,
+  history,
+  saveState,
+  onDraftChange,
+  onApplyTemplate,
+  onSubmit,
+  onOpenManage,
+  onOpenHistory,
+  onSaveTemplate,
+  onExitEdit
+}: EditWindowProps) {
+  const editorRef = useRef<HTMLTextAreaElement>(null);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const defaultHint = "Ctrl+Enter 复制并退出";
+  const [hint, setHint] = useState(defaultHint);
+
+  const filteredTemplates = useMemo(() => {
+    const text = query.trim().toLowerCase();
+    const sorted = [...templates].sort((a, b) => {
+      if (a.isFavorite !== b.isFavorite) return a.isFavorite ? -1 : 1;
+      return b.usageCount - a.usageCount;
+    });
+    if (!text) return sorted;
+    return sorted.filter((template) => {
+      const haystack = [template.title, template.description, template.body, template.tags.join(" ")].join(" ").toLowerCase();
+      return haystack.includes(text);
+    });
+  }, [query, templates]);
+
+  const tokenCount = estimateTokens(draft);
+
+  useEffect(() => {
+    if (selectedIndex >= filteredTemplates.length) {
+      setSelectedIndex(Math.max(0, filteredTemplates.length - 1));
+    }
+  }, [filteredTemplates.length, selectedIndex]);
+
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (paletteOpen) {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          setPaletteOpen(false);
+          editorRef.current?.focus();
+        }
+        if (event.key === "ArrowDown") {
+          event.preventDefault();
+          setSelectedIndex((index) => Math.min(index + 1, filteredTemplates.length - 1));
+        }
+        if (event.key === "ArrowUp") {
+          event.preventDefault();
+          setSelectedIndex((index) => Math.max(index - 1, 0));
+        }
+        if (event.key === "Enter" && filteredTemplates[selectedIndex]) {
+          event.preventDefault();
+          applyTemplate(filteredTemplates[selectedIndex]);
+        }
+        return;
+      }
+
+      if (event.ctrlKey && event.key === "p") {
+        event.preventDefault();
+        setPaletteOpen(true);
+      }
+      if (event.ctrlKey && event.key === ",") {
+        event.preventDefault();
+        onOpenManage();
+      }
+      if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === "s") {
+        event.preventDefault();
+        onSaveTemplate();
+        setHint("已保存为固定模板");
+      }
+      if (event.ctrlKey && event.key === "Enter") {
+        event.preventDefault();
+        onSubmit();
+      }
+      if (event.ctrlKey && event.key.toLowerCase() === "h") {
+        event.preventDefault();
+        onOpenHistory();
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onExitEdit();
+      }
+    };
+
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [filteredTemplates, onExitEdit, onOpenHistory, onOpenManage, onSaveTemplate, onSubmit, paletteOpen, selectedIndex]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      if (hint !== defaultHint) setHint(defaultHint);
+    }, 1400);
+    return () => window.clearTimeout(timeout);
+  }, [defaultHint, hint]);
+
+  const applyTemplate = (template: TemplateItem) => {
+    const editor = editorRef.current;
+    onApplyTemplate(template, editor?.selectionStart, editor?.selectionEnd);
+    setPaletteOpen(false);
+    setQuery("");
+    window.requestAnimationFrame(() => editorRef.current?.focus());
+  };
+
+  return (
+    <main className="edit-shell" aria-label="Prompt Dock 编辑窗口">
+      <button
+        className="edit-drag-handle"
+        type="button"
+        title="拖动移动编辑窗口"
+        onPointerDown={(event) => {
+          event.preventDefault();
+          void startWindowDrag();
+        }}
+      />
+
+      <div className="edit-corner-actions" onPointerDown={(event) => event.stopPropagation()}>
+        <button className="icon-button subtle" type="button" onClick={onOpenManage} title="打开管理窗口 Ctrl+,">
+          <Settings size={18} />
+        </button>
+      </div>
+
+      <div className="editor-frame" onPointerDown={(event) => event.stopPropagation()}>
+        <textarea
+          ref={editorRef}
+          value={draft}
+          onChange={(event) => onDraftChange(event.target.value)}
+          spellCheck={false}
+          autoFocus
+          placeholder="在这里写 prompt。Ctrl+Enter 复制并退出。"
+        />
+      </div>
+
+      <div className="edit-bottom-bar" onPointerDown={(event) => event.stopPropagation()}>
+        <div className="edit-status" aria-live="polite">
+          <span className={`save-dot ${saveState}`} />
+          <span>{saveState === "saving" ? "保存中" : "已保存"}</span>
+          <span>{draft.length} 字符</span>
+          <span>约 {tokenCount} tokens</span>
+          <span>{history.length} 条历史</span>
+          <strong>{hint}</strong>
+        </div>
+      </div>
+
+      <TemplatePalette
+        open={paletteOpen}
+        query={query}
+        selectedIndex={selectedIndex}
+        templates={filteredTemplates}
+        onQueryChange={setQuery}
+        onSelectIndex={setSelectedIndex}
+        onApply={applyTemplate}
+        onClose={() => setPaletteOpen(false)}
+      />
+    </main>
+  );
+}

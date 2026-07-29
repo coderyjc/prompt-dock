@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Default Prompt Dock permissions",
+  "windows": ["edit", "manage"],
+  "permissions": ["core:default", "core:window:default", "core:window:allow-start-dragging"]
+}

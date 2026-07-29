@@ -1,0 +1,21 @@
+[package]
+name = "prompt-dock"
+version = "0.1.0"
+description = "A lightweight Windows-first prompt editor."
+authors = ["Prompt Dock"]
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+arboard = "3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-single-instance = "2"
+
+[[bin]]
+name = "prompt-dock"
+path = "src/main.rs"
