@@ -1,6 +1,6 @@
 import { Settings } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { HistoryItem, ShortcutItem, TemplateItem } from "../types";
+import type { ShortcutItem, TemplateItem } from "../types";
 import { TemplatePalette } from "./TemplatePalette";
 import { startWindowDrag } from "../lib/desktop";
 import { shortcutMatches } from "../lib/shortcuts";
@@ -8,7 +8,6 @@ import { shortcutMatches } from "../lib/shortcuts";
 type EditWindowProps = {
   draft: string;
   templates: TemplateItem[];
-  history: HistoryItem[];
   shortcuts: ShortcutItem[];
   saveState: "saved" | "saving";
   onDraftChange: (value: string) => void;
@@ -16,6 +15,7 @@ type EditWindowProps = {
   onSubmit: () => void | Promise<void>;
   onOpenManage: () => void;
   onOpenHistory: () => void;
+  onOpenStash: () => void;
   onSaveTemplate: () => void;
   onExitEdit: () => void | Promise<void>;
 };
@@ -29,7 +29,6 @@ const estimateTokens = (value: string) => {
 export function EditWindow({
   draft,
   templates,
-  history,
   shortcuts,
   saveState,
   onDraftChange,
@@ -37,6 +36,7 @@ export function EditWindow({
   onSubmit,
   onOpenManage,
   onOpenHistory,
+  onOpenStash,
   onSaveTemplate,
   onExitEdit
 }: EditWindowProps) {
@@ -121,6 +121,10 @@ export function EditWindow({
         event.preventDefault();
         onOpenHistory();
       }
+      if (shortcutMatches(event, getShortcut("stash", "Ctrl + J"))) {
+        event.preventDefault();
+        onOpenStash();
+      }
       if (shortcutMatches(event, getShortcut("escape", "Esc"))) {
         event.preventDefault();
         void onExitEdit();
@@ -129,7 +133,7 @@ export function EditWindow({
 
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [filteredTemplates, getShortcut, onExitEdit, onOpenHistory, onOpenManage, onSaveTemplate, onSubmit, paletteOpen, selectedIndex]);
+  }, [filteredTemplates, getShortcut, onExitEdit, onOpenHistory, onOpenManage, onOpenStash, onSaveTemplate, onSubmit, paletteOpen, selectedIndex]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -181,7 +185,6 @@ export function EditWindow({
           <span>{saveState === "saving" ? "保存中" : "已保存"}</span>
           <span>{draft.length} 字符</span>
           <span>约 {tokenCount} tokens</span>
-          <span>{history.length} 条历史</span>
           <strong>{hint}</strong>
         </div>
       </div>

@@ -20,11 +20,18 @@ export type HistoryItem = {
   targetApp?: string;
 };
 
+export type PromptStatItem = {
+  id: string;
+  charCount: number;
+  action: "copied";
+  createdAt: string;
+};
+
 export type ShortcutItem = {
   id: string;
   action: string;
   keys: string;
-  scope: "全局" | "编辑窗口" | "工作台";
+  scope: "全局" | "编辑窗口" | "工作台" | "编辑窗口/工作台";
   locked?: boolean;
 };
 

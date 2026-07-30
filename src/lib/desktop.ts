@@ -34,6 +34,16 @@ export const copyText = async (text: string) => {
   }
 };
 
+export const openExternalUrl = async (url: string) => {
+  try {
+    await invokeCommand("open_external_url", { url });
+    return true;
+  } catch {
+    window.open(url, "_blank", "noopener,noreferrer");
+    return false;
+  }
+};
+
 export const openManageWindow = async () => {
   try {
     await invokeCommand("open_manage_window");

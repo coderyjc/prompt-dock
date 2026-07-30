@@ -6,7 +6,7 @@ use tauri::{
     AppHandle, Manager, State, WindowEvent,
 };
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
-use std::{str::FromStr, sync::Mutex};
+use std::{process::Command, str::FromStr, sync::Mutex};
 
 struct ToggleShortcutState(Mutex<Shortcut>);
 
@@ -18,6 +18,19 @@ fn default_toggle_shortcut() -> Shortcut {
 fn copy_prompt(text: String) -> Result<(), String> {
     let mut clipboard = arboard::Clipboard::new().map_err(|error| error.to_string())?;
     clipboard.set_text(text).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn open_external_url(url: String) -> Result<(), String> {
+    if !(url.starts_with("https://") || url.starts_with("http://")) {
+        return Err("unsupported url scheme".to_string());
+    }
+
+    Command::new("explorer")
+        .arg(url)
+        .spawn()
+        .map_err(|error| error.to_string())?;
+    Ok(())
 }
 
 #[tauri::command]
@@ -190,6 +203,7 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             copy_prompt,
+            open_external_url,
             submit_prompt,
             open_manage_window,
             open_edit_window,

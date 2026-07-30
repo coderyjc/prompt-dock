@@ -4,7 +4,7 @@ import { copyText, hideEditWindow, openEditWindow, openManageWindow, setGlobalTo
 import { storageKeys, usePersistentState, writeValue } from "./lib/persistence";
 import { EditWindow } from "./components/EditWindow";
 import { ManageWindow } from "./components/ManageWindow";
-import type { HistoryItem, SettingsState, ShortcutItem, TemplateItem, WindowMode } from "./types";
+import type { HistoryItem, PromptStatItem, SettingsState, ShortcutItem, TemplateItem, WindowMode } from "./types";
 
 const readInitialMode = (): WindowMode => {
   const mode = new URLSearchParams(window.location.search).get("window");
@@ -18,11 +18,32 @@ const makeHistory = (body: string, action: HistoryItem["action"]): HistoryItem =
   createdAt: nowIso()
 });
 
+const makePromptStat = (historyItem: HistoryItem): PromptStatItem => ({
+  id: historyItem.id,
+  charCount: historyItem.body.length,
+  action: historyItem.action,
+  createdAt: historyItem.createdAt
+});
+
+const mergeShortcutsWithDefaults = (items: ShortcutItem[]) => {
+  const defaultIds = new Set(defaultShortcuts.map((shortcut) => shortcut.id));
+  const currentById = new Map(items.map((shortcut) => [shortcut.id, shortcut]));
+  const merged = defaultShortcuts.map((shortcut) => {
+    const current = currentById.get(shortcut.id);
+    return current ? { ...shortcut, keys: current.keys } : shortcut;
+  });
+  const extras = items.filter((shortcut) => !defaultIds.has(shortcut.id));
+  return [...merged, ...extras];
+};
+
+const shortcutsEqual = (left: ShortcutItem[], right: ShortcutItem[]) => JSON.stringify(left) === JSON.stringify(right);
+
 export function App() {
   const [mode] = useState<WindowMode>(() => readInitialMode());
   const [draft, setDraft] = usePersistentState(storageKeys.draft, "");
   const [templates, setTemplates] = usePersistentState(storageKeys.templates, defaultTemplates);
   const [history, setHistory] = usePersistentState(storageKeys.history, defaultHistory);
+  const [promptStats, setPromptStats] = usePersistentState<PromptStatItem[]>(storageKeys.promptStats, []);
   const [shortcuts, setShortcuts] = usePersistentState<ShortcutItem[]>(storageKeys.shortcuts, defaultShortcuts);
   const [settings, setSettings] = usePersistentState<SettingsState>(storageKeys.settings, defaultSettings);
   const [saveState, setSaveState] = useState<"saved" | "saving">("saved");
@@ -64,6 +85,23 @@ export function App() {
     if (toggleShortcut) void setGlobalToggleShortcut(toggleShortcut.keys);
   }, [shortcuts]);
 
+  useEffect(() => {
+    setShortcuts((items) => {
+      const merged = mergeShortcutsWithDefaults(items);
+      return shortcutsEqual(items, merged) ? items : merged;
+    });
+  }, [setShortcuts]);
+
+  useEffect(() => {
+    if (history.length === 0) return;
+
+    setPromptStats((items) => {
+      const knownIds = new Set(items.map((item) => item.id));
+      const missing = history.filter((item) => !knownIds.has(item.id)).map(makePromptStat);
+      return missing.length > 0 ? [...items, ...missing] : items;
+    });
+  }, [history, setPromptStats]);
+
   const updateTemplateUsage = (target: TemplateItem) => {
     setTemplates((items) =>
       items.map((item) =>
@@ -95,7 +133,9 @@ export function App() {
     const ok = await copyText(committedDraft);
     if (!ok) return;
 
-    setHistory((items) => [makeHistory(committedDraft, "copied"), ...items].slice(0, 120));
+    const nextHistory = makeHistory(committedDraft, "copied");
+    setHistory((items) => [nextHistory, ...items].slice(0, 120));
+    setPromptStats((items) => [...items, makePromptStat(nextHistory)]);
     setDraft("");
     writeValue(storageKeys.draft, "");
     setSaveState("saved");
@@ -121,8 +161,9 @@ export function App() {
     await openManageWindow();
   };
 
-  const openEdit = async () => {
-    await openEditWindow();
+  const openManageSection = async (section: string) => {
+    writeValue(storageKeys.manageSection, section);
+    await openManageWindow();
   };
 
   const restoreHistory = async (item: HistoryItem) => {
@@ -143,14 +184,15 @@ export function App() {
         draft={draft}
         templates={templates}
         history={sortedHistory}
+        promptStats={promptStats}
         shortcuts={shortcuts}
         settings={settings}
         onTemplatesChange={setTemplates}
         onHistoryChange={setHistory}
         onShortcutsChange={setShortcuts}
         onSettingsChange={setSettings}
+        onDraftChange={setDraft}
         onRestoreHistory={restoreHistory}
-        onOpenEdit={openEdit}
       />
     );
   }
@@ -159,14 +201,14 @@ export function App() {
     <EditWindow
       draft={draft}
       templates={templates}
-      history={sortedHistory}
       shortcuts={shortcuts}
       saveState={saveState}
       onDraftChange={setDraft}
       onApplyTemplate={applyTemplate}
       onSubmit={handleSubmit}
       onOpenManage={openManage}
-      onOpenHistory={openManage}
+      onOpenHistory={() => openManageSection("history")}
+      onOpenStash={() => openManageSection("stash")}
       onSaveTemplate={handleSaveTemplate}
       onExitEdit={exitEdit}
     />
