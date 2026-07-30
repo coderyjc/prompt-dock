@@ -21,6 +21,9 @@
   --warning: #a46a16;
   --danger: #b53d35;
   --shadow: 0 22px 70px rgba(22, 31, 29, 0.16);
+  --body-start: rgba(250, 252, 250, 0.86);
+  --body-end: rgba(232, 239, 235, 0.78);
+  --body-grid: rgba(19, 42, 36, 0.04);
   --radius: 8px;
   --motion-fast: 140ms;
   --motion-mid: 260ms;
@@ -47,6 +50,9 @@
     --accent-strong: #80ddcb;
     --accent-soft: rgba(85, 193, 170, 0.16);
     --shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+    --body-start: rgba(24, 32, 30, 0.88);
+    --body-end: rgba(10, 16, 14, 0.94);
+    --body-grid: rgba(226, 242, 236, 0.035);
   }
 }
 
@@ -67,8 +73,8 @@ body {
   min-width: 320px;
   min-height: 100vh;
   background:
-    linear-gradient(135deg, rgba(250, 252, 250, 0.86), rgba(232, 239, 235, 0.78)),
-    repeating-linear-gradient(90deg, rgba(19, 42, 36, 0.04) 0 1px, transparent 1px 80px);
+    linear-gradient(135deg, var(--body-start), var(--body-end)),
+    repeating-linear-gradient(90deg, var(--body-grid) 0 1px, transparent 1px 80px);
   color: var(--text);
   overflow: hidden;
   user-select: none;
@@ -131,7 +137,7 @@ kbd {
 
 .editor-frame {
   position: absolute;
-  inset: 0 0 3.6rem;
+  inset: 0 0 2.05rem;
   width: 100%;
   border: 0;
   border-radius: 0;
@@ -147,7 +153,7 @@ kbd {
   border: 0;
   outline: none;
   resize: none;
-  padding: 3rem 3.1rem 1.35rem;
+  padding: 3rem 3.1rem 0.9rem;
   color: var(--text);
   background: transparent;
   font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
@@ -162,10 +168,17 @@ kbd {
   scrollbar-color: color-mix(in srgb, var(--accent) 55%, var(--muted)) transparent;
   scrollbar-gutter: stable;
   scrollbar-width: thin;
+  caret-color: var(--accent-strong);
 }
 
 .editor-frame textarea::placeholder {
   color: var(--faint);
+}
+
+.editor-frame textarea::selection {
+  background: color-mix(in srgb, var(--accent) 34%, transparent);
+  color: var(--text);
+  text-shadow: none;
 }
 
 .editor-frame textarea::-webkit-scrollbar {
@@ -234,12 +247,26 @@ kbd {
   gap: 0.35rem;
 }
 
+.edit-close-button {
+  border-color: var(--line);
+  background: var(--surface-solid);
+  color: #d92d25;
+}
+
+.edit-close-button:hover {
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--line));
+  background: color-mix(in srgb, var(--surface-muted) 74%, var(--surface-solid));
+  box-shadow:
+    0 0 0 4px var(--accent-soft),
+    0 10px 24px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
 .edit-bottom-bar {
   position: absolute;
   z-index: 5;
   left: 2.25rem;
   right: 1.5rem;
-  bottom: 0.85rem;
+  bottom: 0.58rem;
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -262,9 +289,11 @@ kbd {
   display: flex;
   align-items: center;
   min-width: 0;
-  gap: 0.7rem;
+  gap: 0.55rem;
+  padding-left: 5px;
   color: var(--muted);
-  font-size: 0.82rem;
+  font-size: 0.78rem;
+  line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
 }
@@ -276,11 +305,11 @@ kbd {
 
 .save-dot {
   flex: 0 0 auto;
-  width: 0.55rem;
-  height: 0.55rem;
+  width: 0.48rem;
+  height: 0.48rem;
   border-radius: 999px;
   background: var(--accent);
-  box-shadow: 0 0 0 4px var(--accent-soft);
+  box-shadow: 0 0 0 3px var(--accent-soft);
   transition:
     background var(--motion-fast) var(--ease-standard),
     box-shadow var(--motion-fast) var(--ease-standard),
@@ -382,6 +411,7 @@ kbd {
 .action-tile:focus-visible,
 .sidebar nav button:focus-visible,
 .segmented button:focus-visible,
+.theme-choice:focus-visible,
 .toggle:focus-visible,
 input:focus-visible,
 textarea:focus-visible {
@@ -910,6 +940,7 @@ textarea:focus-visible {
 .manage-content-motion.is-entering .stash-item,
 .manage-content-motion.is-entering .shortcut-row,
 .manage-content-motion.is-entering .setting-row,
+.manage-content-motion.is-entering .theme-series-row,
 .manage-content-motion.is-entering .settings-group,
 .manage-content-motion.is-entering .action-tile,
 .manage-content-motion.is-entering .about-card {
@@ -921,6 +952,7 @@ textarea:focus-visible {
 .manage-content-motion.is-entering .stash-item:nth-child(2),
 .manage-content-motion.is-entering .shortcut-row:nth-child(2),
 .manage-content-motion.is-entering .setting-row:nth-child(2),
+.manage-content-motion.is-entering .theme-series-row:nth-child(2),
 .manage-content-motion.is-entering .settings-group:nth-child(2),
 .manage-content-motion.is-entering .action-tile:nth-child(2) {
   animation-delay: 22ms;
@@ -931,6 +963,7 @@ textarea:focus-visible {
 .manage-content-motion.is-entering .stash-item:nth-child(3),
 .manage-content-motion.is-entering .shortcut-row:nth-child(3),
 .manage-content-motion.is-entering .setting-row:nth-child(3),
+.manage-content-motion.is-entering .theme-series-row:nth-child(3),
 .manage-content-motion.is-entering .settings-group:nth-child(3),
 .manage-content-motion.is-entering .action-tile:nth-child(3) {
   animation-delay: 44ms;
@@ -941,6 +974,7 @@ textarea:focus-visible {
 .manage-content-motion.is-entering .stash-item:nth-child(n + 4),
 .manage-content-motion.is-entering .shortcut-row:nth-child(n + 4),
 .manage-content-motion.is-entering .setting-row:nth-child(n + 4),
+.manage-content-motion.is-entering .theme-series-row:nth-child(n + 4),
 .manage-content-motion.is-entering .settings-group:nth-child(n + 4),
 .manage-content-motion.is-entering .action-tile:nth-child(n + 4) {
   animation-delay: 66ms;
@@ -1525,6 +1559,133 @@ textarea:focus-visible {
   gap: 0.75rem;
 }
 
+.theme-series-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.theme-series-row {
+  display: grid;
+  grid-template-columns: minmax(8.5rem, 0.35fr) minmax(0, 1fr);
+  align-items: stretch;
+  gap: 0.8rem;
+  min-height: 5.4rem;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-solid);
+  transition:
+    transform var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-mid) var(--ease-standard),
+    background var(--motion-mid) var(--ease-standard),
+    box-shadow var(--motion-mid) var(--ease-standard);
+}
+
+.theme-series-row:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--accent) 24%, var(--line));
+  box-shadow: 0 12px 26px rgba(22, 31, 29, 0.07);
+}
+
+.theme-series-copy {
+  display: grid;
+  align-content: center;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.theme-series-copy strong {
+  font-size: 1rem;
+}
+
+.theme-series-copy span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.theme-choice-list {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.theme-choice {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 0.48rem;
+  min-width: 0;
+  min-height: 4rem;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 0.58rem;
+  background: var(--surface-muted);
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    transform var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-mid) var(--ease-standard),
+    background var(--motion-mid) var(--ease-standard),
+    box-shadow var(--motion-mid) var(--ease-standard);
+}
+
+.theme-choice:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--line));
+  box-shadow: 0 10px 24px rgba(22, 31, 29, 0.08);
+}
+
+.theme-choice:active {
+  transform: scale(0.98);
+}
+
+.theme-choice.is-active {
+  border-color: color-mix(in srgb, var(--accent) 62%, var(--line));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-soft) 78%, var(--surface-solid)), var(--surface-solid));
+  box-shadow:
+    0 0 0 3px var(--accent-soft),
+    0 14px 28px rgba(22, 31, 29, 0.1);
+}
+
+.theme-choice-preview {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr 1fr;
+  gap: 0.18rem;
+  height: 1.2rem;
+}
+
+.theme-choice-preview span {
+  min-width: 0;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.34);
+}
+
+.theme-choice-meta {
+  display: grid;
+  gap: 0.08rem;
+  min-width: 0;
+}
+
+.theme-choice-meta strong,
+.theme-choice-meta small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-choice-meta strong {
+  font-size: 0.84rem;
+  font-weight: 720;
+}
+
+.theme-choice-meta small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 650;
+}
+
 .settings-panel {
   overflow-x: hidden;
   overflow-y: scroll;
@@ -1985,6 +2146,354 @@ textarea:focus-visible {
   }
 }
 
+:root[data-visual-series] .manage-shell {
+  isolation: isolate;
+  overflow: hidden;
+}
+
+:root[data-visual-series] .manage-shell::before,
+:root[data-visual-series] .manage-shell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+:root[data-visual-series] .sidebar,
+:root[data-visual-series] .manage-content {
+  position: relative;
+  z-index: 1;
+}
+
+:root[data-visual-series] .list-panel,
+:root[data-visual-series] .detail-panel,
+:root[data-visual-series] .single-panel,
+:root[data-visual-series] .palette,
+:root[data-visual-series] .history-modal,
+:root[data-visual-series] .confirm-dialog,
+:root[data-visual-series] .metric-card,
+:root[data-visual-series] .stats-card,
+:root[data-visual-series] .theme-series-row,
+:root[data-visual-series] .settings-group,
+:root[data-visual-series] .setting-row,
+:root[data-visual-series] .shortcut-row,
+:root[data-visual-series] .stash-item {
+  transition:
+    transform var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-mid) var(--ease-standard),
+    background var(--motion-mid) var(--ease-standard),
+    box-shadow var(--motion-mid) var(--ease-standard),
+    filter var(--motion-mid) var(--ease-standard);
+}
+
+:root[data-visual-series="minimal"][data-window="manage"] body {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--text) 4%, transparent) 0 1px, transparent 1px 6rem),
+    linear-gradient(180deg, color-mix(in srgb, var(--text) 4%, transparent) 0 1px, transparent 1px 6rem),
+    linear-gradient(135deg, var(--body-start), var(--body-end));
+}
+
+:root[data-visual-series="minimal"] .manage-shell {
+  background: color-mix(in srgb, var(--surface-solid) 86%, var(--bg));
+}
+
+:root[data-visual-series="minimal"] .manage-shell::before {
+  background:
+    linear-gradient(90deg, transparent 0 14.5rem, var(--line) 14.5rem calc(14.5rem + 1px), transparent calc(14.5rem + 1px)),
+    linear-gradient(180deg, color-mix(in srgb, var(--text) 5%, transparent) 0 1px, transparent 1px 4.8rem);
+  opacity: 0.72;
+}
+
+:root[data-visual-series="minimal"] .sidebar {
+  background: color-mix(in srgb, var(--surface-solid) 82%, transparent);
+}
+
+:root[data-visual-series="minimal"] .list-panel,
+:root[data-visual-series="minimal"] .detail-panel,
+:root[data-visual-series="minimal"] .single-panel,
+:root[data-visual-series="minimal"] .palette,
+:root[data-visual-series="minimal"] .history-modal,
+:root[data-visual-series="minimal"] .confirm-dialog,
+:root[data-visual-series="minimal"] .theme-series-row,
+:root[data-visual-series="minimal"] .settings-group,
+:root[data-visual-series="minimal"] .setting-row,
+:root[data-visual-series="minimal"] .shortcut-row,
+:root[data-visual-series="minimal"] .stash-item {
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--surface-solid) 94%, transparent);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--text) 5%, transparent);
+}
+
+:root[data-visual-series="minimal"] .metric-card,
+:root[data-visual-series="minimal"] .stats-card {
+  border-radius: 3px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface-solid) 96%, transparent), color-mix(in srgb, var(--surface-muted) 56%, transparent));
+  box-shadow: none;
+}
+
+:root[data-visual-series="minimal"] .icon-button,
+:root[data-visual-series="minimal"] .tool-button,
+:root[data-visual-series="minimal"] .segmented,
+:root[data-visual-series="minimal"] .theme-choice,
+:root[data-visual-series="minimal"] .toggle {
+  border-radius: 3px;
+  box-shadow: none;
+}
+
+:root[data-visual-series="minimal"] .nav-indicator {
+  border-radius: 3px;
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+:root[data-visual-series="minimal"] .edit-shell {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--text) 4%, transparent) 0 1px, transparent 1px 5.8rem),
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--surface-solid) var(--editor-opacity-percent), transparent),
+      color-mix(in srgb, var(--surface-muted) var(--editor-opacity-percent), transparent)
+    );
+  backdrop-filter: blur(8px);
+}
+
+:root[data-visual-series="ink"][data-window="manage"] body {
+  background:
+    radial-gradient(ellipse at 18% 18%, color-mix(in srgb, var(--text) 9%, transparent) 0 9rem, transparent 18rem),
+    radial-gradient(ellipse at 74% 72%, color-mix(in srgb, var(--accent) 16%, transparent) 0 10rem, transparent 22rem),
+    linear-gradient(140deg, var(--body-start), var(--body-end));
+}
+
+:root[data-visual-series="ink"] .manage-shell {
+  background:
+    radial-gradient(ellipse at 20% 16%, color-mix(in srgb, var(--text) 8%, transparent) 0 9rem, transparent 23rem),
+    radial-gradient(ellipse at 88% 86%, color-mix(in srgb, var(--accent) 14%, transparent) 0 12rem, transparent 25rem),
+    linear-gradient(145deg, color-mix(in srgb, var(--surface-solid) 84%, var(--bg)), var(--bg));
+}
+
+:root[data-visual-series="ink"] .manage-shell::before {
+  background:
+    linear-gradient(90deg, transparent 0 46%, color-mix(in srgb, var(--text) 6%, transparent) 46% 48%, transparent 48%),
+    radial-gradient(ellipse at 35% 42%, color-mix(in srgb, var(--text) 10%, transparent) 0 4rem, transparent 18rem),
+    repeating-linear-gradient(100deg, transparent 0 1.2rem, color-mix(in srgb, var(--text) 3%, transparent) 1.2rem 1.26rem);
+  opacity: 0.58;
+  filter: blur(0.2px);
+}
+
+:root[data-visual-series="ink"] .sidebar {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface-solid) 72%, transparent), color-mix(in srgb, var(--surface-muted) 72%, transparent));
+  backdrop-filter: blur(18px) saturate(116%);
+}
+
+:root[data-visual-series="ink"] .list-panel,
+:root[data-visual-series="ink"] .detail-panel,
+:root[data-visual-series="ink"] .single-panel,
+:root[data-visual-series="ink"] .palette,
+:root[data-visual-series="ink"] .history-modal,
+:root[data-visual-series="ink"] .confirm-dialog {
+  border-color: color-mix(in srgb, var(--text) 18%, var(--line));
+  border-radius: 18px 7px 18px 7px;
+  background:
+    linear-gradient(155deg, color-mix(in srgb, var(--surface-solid) 86%, transparent), color-mix(in srgb, var(--surface-muted) 64%, transparent)),
+    radial-gradient(ellipse at 100% 0, color-mix(in srgb, var(--accent) 12%, transparent), transparent 16rem);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 24%, transparent),
+    0 24px 58px rgba(22, 31, 29, 0.1);
+  backdrop-filter: blur(22px) saturate(112%);
+}
+
+:root[data-visual-series="ink"] .metric-card,
+:root[data-visual-series="ink"] .stats-card,
+:root[data-visual-series="ink"] .manage-list-item,
+:root[data-visual-series="ink"] .history-item,
+:root[data-visual-series="ink"] .stash-item,
+:root[data-visual-series="ink"] .setting-row,
+:root[data-visual-series="ink"] .shortcut-row,
+:root[data-visual-series="ink"] .theme-series-row,
+:root[data-visual-series="ink"] .settings-group {
+  border-color: color-mix(in srgb, var(--text) 13%, var(--line));
+  border-radius: 14px 5px 14px 5px;
+  background: linear-gradient(110deg, color-mix(in srgb, var(--surface-solid) 88%, transparent), color-mix(in srgb, var(--surface-muted) 62%, transparent));
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--text) 5%, transparent);
+}
+
+:root[data-visual-series="ink"] .icon-button,
+:root[data-visual-series="ink"] .tool-button,
+:root[data-visual-series="ink"] .theme-choice,
+:root[data-visual-series="ink"] .segmented,
+:root[data-visual-series="ink"] .toggle {
+  border-radius: 999px 999px 999px 7px;
+  background: color-mix(in srgb, var(--surface-solid) 80%, transparent);
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--text) 6%, transparent);
+}
+
+:root[data-visual-series="ink"] .nav-indicator {
+  border-radius: 999px 7px 999px 7px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 13%, var(--surface-solid)), color-mix(in srgb, var(--surface-solid) 78%, transparent));
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+:root[data-visual-series="ink"] .edit-shell {
+  background:
+    radial-gradient(ellipse at 20% 18%, color-mix(in srgb, var(--text) 9%, transparent) 0 8rem, transparent 20rem),
+    radial-gradient(ellipse at 82% 82%, color-mix(in srgb, var(--accent) 14%, transparent) 0 9rem, transparent 22rem),
+    linear-gradient(
+      142deg,
+      color-mix(in srgb, var(--surface-solid) var(--editor-opacity-percent), transparent),
+      color-mix(in srgb, var(--surface-muted) var(--editor-opacity-percent), transparent)
+    );
+  backdrop-filter: blur(18px) saturate(118%);
+}
+
+:root[data-visual-series="geek"][data-window="manage"] body {
+  background:
+    radial-gradient(circle at 18% 14%, color-mix(in srgb, var(--accent) 20%, transparent) 0 10rem, transparent 22rem),
+    radial-gradient(circle at 84% 78%, color-mix(in srgb, var(--accent-strong) 18%, transparent) 0 12rem, transparent 24rem),
+    repeating-linear-gradient(0deg, color-mix(in srgb, var(--accent) 6%, transparent) 0 1px, transparent 1px 3.2rem),
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--accent) 5%, transparent) 0 1px, transparent 1px 3.2rem),
+    linear-gradient(135deg, var(--body-start), var(--body-end));
+}
+
+:root[data-visual-series="geek"] .manage-shell {
+  background:
+    radial-gradient(circle at 12% 8%, color-mix(in srgb, var(--accent) 20%, transparent) 0 8rem, transparent 18rem),
+    radial-gradient(circle at 86% 82%, color-mix(in srgb, var(--accent-strong) 18%, transparent) 0 10rem, transparent 22rem),
+    linear-gradient(135deg, color-mix(in srgb, var(--surface-solid) 62%, transparent), color-mix(in srgb, var(--bg) 88%, transparent));
+}
+
+:root[data-visual-series="geek"] .manage-shell::before {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--accent) 12%, transparent) 0 1px, transparent 1px 4.2rem),
+    linear-gradient(180deg, color-mix(in srgb, var(--accent) 9%, transparent) 0 1px, transparent 1px 4.2rem);
+  opacity: 0.55;
+  mask-image: radial-gradient(circle at 52% 46%, black, transparent 76%);
+}
+
+:root[data-visual-series="geek"] .manage-shell::after {
+  background: repeating-linear-gradient(180deg, transparent 0 0.42rem, color-mix(in srgb, var(--accent) 4%, transparent) 0.42rem 0.48rem);
+  mix-blend-mode: screen;
+  opacity: 0.42;
+}
+
+:root[data-visual-series="geek"] .sidebar {
+  border-right-color: color-mix(in srgb, var(--accent) 38%, var(--line));
+  background: color-mix(in srgb, var(--surface-solid) 58%, transparent);
+  backdrop-filter: blur(28px) saturate(170%);
+  box-shadow: inset -1px 0 0 color-mix(in srgb, var(--accent) 32%, transparent);
+}
+
+:root[data-visual-series="geek"] .list-panel,
+:root[data-visual-series="geek"] .detail-panel,
+:root[data-visual-series="geek"] .single-panel,
+:root[data-visual-series="geek"] .palette,
+:root[data-visual-series="geek"] .history-modal,
+:root[data-visual-series="geek"] .confirm-dialog {
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--line));
+  border-radius: 10px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface-solid) 58%, transparent), color-mix(in srgb, var(--surface-muted) 44%, transparent));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, white 8%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent),
+    0 22px 72px rgba(0, 0, 0, 0.18),
+    0 0 42px color-mix(in srgb, var(--accent) 13%, transparent);
+  backdrop-filter: blur(28px) saturate(175%);
+}
+
+:root[data-visual-series="geek"] .metric-card,
+:root[data-visual-series="geek"] .stats-card,
+:root[data-visual-series="geek"] .manage-list-item,
+:root[data-visual-series="geek"] .history-item,
+:root[data-visual-series="geek"] .stash-item,
+:root[data-visual-series="geek"] .setting-row,
+:root[data-visual-series="geek"] .shortcut-row,
+:root[data-visual-series="geek"] .theme-series-row,
+:root[data-visual-series="geek"] .settings-group {
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--line));
+  border-radius: 8px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--surface-solid) 62%, transparent), color-mix(in srgb, var(--surface-muted) 48%, transparent));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, white 7%, transparent),
+    0 0 24px color-mix(in srgb, var(--accent) 9%, transparent);
+  backdrop-filter: blur(18px) saturate(160%);
+}
+
+:root[data-visual-series="geek"] .icon-button,
+:root[data-visual-series="geek"] .tool-button,
+:root[data-visual-series="geek"] .theme-choice,
+:root[data-visual-series="geek"] .segmented,
+:root[data-visual-series="geek"] .toggle {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--line));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface-solid) 58%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, white 8%, transparent),
+    0 0 18px color-mix(in srgb, var(--accent) 12%, transparent);
+  backdrop-filter: blur(14px) saturate(170%);
+}
+
+:root[data-visual-series="geek"] .tool-button.primary,
+:root[data-visual-series="geek"] .sidebar nav button.is-active {
+  color: var(--text);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--accent) 52%, transparent);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 42%, transparent), color-mix(in srgb, var(--accent-strong) 20%, transparent));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent),
+    0 0 24px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+:root[data-visual-series="geek"] .nav-indicator {
+  border-color: color-mix(in srgb, var(--accent) 54%, var(--line));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface-solid));
+  box-shadow:
+    inset 3px 0 0 var(--accent),
+    0 0 24px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+:root[data-visual-series="geek"] .edit-shell {
+  background:
+    repeating-linear-gradient(0deg, color-mix(in srgb, var(--accent) 7%, transparent) 0 1px, transparent 1px 3.5rem),
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--accent) 5%, transparent) 0 1px, transparent 1px 3.5rem),
+    radial-gradient(circle at 82% 18%, color-mix(in srgb, var(--accent) 18%, transparent) 0 9rem, transparent 20rem),
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--surface-solid) var(--editor-opacity-percent), transparent),
+      color-mix(in srgb, var(--surface-muted) var(--editor-opacity-percent), transparent)
+    );
+  backdrop-filter: blur(24px) saturate(175%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+:root[data-visual-series] .edit-close-button {
+  border-color: var(--line);
+  background: var(--surface-solid);
+  color: #ff453a;
+}
+
+:root[data-visual-series] .edit-close-button:hover {
+  border-color: color-mix(in srgb, var(--accent) 32%, var(--line));
+  background: color-mix(in srgb, var(--surface-muted) 72%, var(--surface-solid));
+  box-shadow:
+    0 0 0 4px var(--accent-soft),
+    0 10px 24px color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+:root[data-visual-series="minimal"] .editor-frame textarea::selection {
+  background: color-mix(in srgb, var(--accent) 24%, var(--surface-muted));
+  color: var(--text);
+}
+
+:root[data-visual-series="ink"] .editor-frame textarea::selection {
+  background: color-mix(in srgb, var(--accent) 30%, var(--surface-muted));
+  color: var(--text);
+}
+
+:root[data-visual-series="geek"] .editor-frame textarea::selection {
+  background: color-mix(in srgb, var(--accent) 48%, transparent);
+  color: var(--text);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--accent) 42%, transparent);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -2056,16 +2565,24 @@ textarea:focus-visible {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .theme-series-row {
+    grid-template-columns: 1fr;
+  }
+
+  .theme-choice-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .edit-status {
     flex-wrap: wrap;
   }
 
   .editor-frame {
-    inset: 0 0 4.7rem;
+    inset: 0 0 3.15rem;
   }
 
   .editor-frame textarea {
-    padding: 3rem 1rem 1.2rem;
+    padding: 3rem 1rem 0.9rem;
   }
 
   .edit-bottom-bar {

@@ -1,4 +1,5 @@
 import type { HistoryItem, SettingsState, ShortcutItem, TemplateItem } from "../types";
+import { defaultVisualThemeId } from "./themeCatalog";
 
 export const nowIso = () => new Date().toISOString();
 
@@ -86,6 +87,7 @@ export const defaultSettings: SettingsState = {
   restoreClipboard: true,
   launchAtStartup: false,
   theme: "system",
+  visualTheme: defaultVisualThemeId,
   autoSaveMs: 500,
   historyDays: 30,
   historyLimit: 200,

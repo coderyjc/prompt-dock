@@ -1,17 +1,43 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use std::{process::Command, str::FromStr, sync::Mutex};
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle, LogicalSize, Manager, Size, State, WindowEvent,
+    AppHandle, LogicalSize, Manager, Size, State, WebviewWindow, WindowEvent,
 };
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
-use std::{process::Command, str::FromStr, sync::Mutex};
 
 struct ToggleShortcutState(Mutex<Shortcut>);
+struct EditWindowSizeState(Mutex<(u32, u32)>);
 
 fn default_toggle_shortcut() -> Shortcut {
     Shortcut::new(Some(Modifiers::CONTROL), Code::KeyL)
+}
+
+fn default_edit_window_size() -> (u32, u32) {
+    (760, 520)
+}
+
+fn clamp_edit_window_size(width: u32, height: u32) -> (u32, u32) {
+    (width.clamp(520, 1600), height.clamp(360, 1000))
+}
+
+fn apply_edit_window_size(window: &WebviewWindow, width: u32, height: u32) -> Result<(), String> {
+    let (width, height) = clamp_edit_window_size(width, height);
+    let _ = window.set_min_size(Some(Size::Logical(LogicalSize::new(520.0, 360.0))));
+    window
+        .set_size(Size::Logical(LogicalSize::new(width as f64, height as f64)))
+        .map_err(|error| error.to_string())
+}
+
+fn restore_edit_window_size(app: &AppHandle, window: &WebviewWindow) -> Result<(), String> {
+    let (width, height) = *app
+        .state::<EditWindowSizeState>()
+        .0
+        .lock()
+        .map_err(|_| "edit window size state is unavailable".to_string())?;
+    apply_edit_window_size(window, width, height)
 }
 
 #[tauri::command]
@@ -94,15 +120,24 @@ fn set_global_toggle_shortcut(
 }
 
 #[tauri::command]
-fn set_edit_window_size(app: AppHandle, width: u32, height: u32) -> Result<(), String> {
+fn set_edit_window_size(
+    app: AppHandle,
+    size_state: State<EditWindowSizeState>,
+    width: u32,
+    height: u32,
+) -> Result<(), String> {
     let window = app
         .get_webview_window("edit")
         .ok_or_else(|| "edit window not found".to_string())?;
-    let width = width.clamp(520, 1600);
-    let height = height.clamp(360, 1000);
-    window
-        .set_size(Size::Logical(LogicalSize::new(width as f64, height as f64)))
-        .map_err(|error| error.to_string())
+    let (width, height) = clamp_edit_window_size(width, height);
+    {
+        let mut current = size_state
+            .0
+            .lock()
+            .map_err(|_| "edit window size state is unavailable".to_string())?;
+        *current = (width, height);
+    }
+    apply_edit_window_size(&window, width, height)
 }
 
 fn show_window(app: &AppHandle, label: &str) -> Result<(), String> {
@@ -120,6 +155,7 @@ fn show_edit_window(app: &AppHandle) -> Result<(), String> {
         .get_webview_window("edit")
         .ok_or_else(|| "edit window not found".to_string())?;
     let _ = window.unminimize();
+    let _ = restore_edit_window_size(app, &window);
     let _ = window.center();
     window.show().map_err(|error| error.to_string())?;
     window.set_focus().map_err(|error| error.to_string())?;
@@ -135,6 +171,7 @@ fn toggle_edit_window(app: &AppHandle) -> Result<(), String> {
         window.hide().map_err(|error| error.to_string())?;
         Ok(())
     } else {
+        let _ = restore_edit_window_size(app, &window);
         let _ = window.center();
         window.show().map_err(|error| error.to_string())?;
         window.set_focus().map_err(|error| error.to_string())?;
@@ -145,7 +182,8 @@ fn toggle_edit_window(app: &AppHandle) -> Result<(), String> {
 fn build_tray(app: &tauri::App) -> tauri::Result<()> {
     let open_edit = MenuItem::with_id(app, "open_edit", "打开编辑窗口", true, None::<&str>)?;
     let open_manage = MenuItem::with_id(app, "open_manage", "打开工作台", true, None::<&str>)?;
-    let pause_shortcuts = MenuItem::with_id(app, "pause_shortcuts", "暂停快捷键", true, None::<&str>)?;
+    let pause_shortcuts =
+        MenuItem::with_id(app, "pause_shortcuts", "暂停快捷键", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&open_edit, &open_manage, &pause_shortcuts, &quit])?;
 
@@ -189,6 +227,7 @@ fn build_tray(app: &tauri::App) -> tauri::Result<()> {
 fn main() {
     tauri::Builder::default()
         .manage(ToggleShortcutState(Mutex::new(default_toggle_shortcut())))
+        .manage(EditWindowSizeState(Mutex::new(default_edit_window_size())))
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             let _ = show_window(app, "manage");
         }))

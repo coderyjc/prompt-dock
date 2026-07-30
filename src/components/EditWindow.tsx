@@ -1,4 +1,4 @@
-import { Settings } from "lucide-react";
+import { Settings, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ShortcutItem, StashItem, TemplateItem } from "../types";
 import { TemplatePalette } from "./TemplatePalette";
@@ -49,8 +49,6 @@ export function EditWindow({
   const [paletteMode, setPaletteMode] = useState<"root" | "stash">("root");
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const defaultHint = "Ctrl+Enter 复制并退出";
-  const [hint, setHint] = useState(defaultHint);
 
   const filteredTemplates = useMemo(() => {
     const text = query.trim().toLowerCase();
@@ -78,6 +76,19 @@ export function EditWindow({
   }, [shortcuts]);
 
   const getShortcut = (id: string, fallback: string) => shortcutById.get(id) ?? fallback;
+  const formatShortcut = (shortcut: string) => shortcut.replace(/\s*\+\s*/g, "+");
+  const submitShortcut = formatShortcut(getShortcut("submit", "Ctrl + Enter"));
+  const templateShortcut = formatShortcut(getShortcut("template", "Ctrl + P"));
+  const stashShortcut = formatShortcut(getShortcut("stash", "Ctrl + J"));
+  const escapeShortcut = formatShortcut(getShortcut("escape", "Esc"));
+  const defaultHint = `${submitShortcut} 复制并退出`;
+  const [hint, setHint] = useState(defaultHint);
+  const placeholder = [
+    "内容会自动保存",
+    `- ${templateShortcut} 指令窗口`,
+    `- ${stashShortcut} 暂存提示词`,
+    `- ${escapeShortcut} 关闭窗口并保留内容`
+  ].join("\n");
 
   useEffect(() => {
     editorRef.current?.focus();
@@ -220,6 +231,9 @@ export function EditWindow({
         <button className="icon-button subtle" type="button" onClick={onOpenManage} title="打开工作台 Ctrl+,">
           <Settings size={18} />
         </button>
+        <button className="icon-button edit-close-button" type="button" onClick={() => void onExitEdit()} title={`关闭编辑窗口 ${escapeShortcut}`}>
+          <X size={18} />
+        </button>
       </div>
 
       <div className="editor-frame" onPointerDown={(event) => event.stopPropagation()}>
@@ -229,7 +243,7 @@ export function EditWindow({
           onChange={(event) => onDraftChange(event.target.value)}
           spellCheck={false}
           autoFocus
-          placeholder="在这里写 prompt。Ctrl+Enter 复制并退出。"
+          placeholder={placeholder}
         />
       </div>
 

@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { defaultShortcuts } from "../data/defaults";
+import { visualThemeSeries } from "../data/themeCatalog";
 import { copyText, openExternalUrl, startWindowDrag } from "../lib/desktop";
 import { formatKeyboardShortcut } from "../lib/shortcuts";
 import { storageKeys } from "../lib/persistence";
@@ -901,21 +902,12 @@ export function ManageWindow({
         <section className="single-panel">
           <div className="detail-heading">
             <div>
-              <p className="eyebrow">安静材质</p>
+              <p className="eyebrow">主题系列</p>
               <h2>外观</h2>
             </div>
           </div>
           <div className="setting-stack">
-            <Segmented
-              label="主题"
-              value={settings.theme}
-              options={[
-                ["system", "跟随系统"],
-                ["light", "浅色"],
-                ["dark", "深色"]
-              ]}
-              onChange={(value) => onSettingsChange({ ...settings, theme: value as SettingsState["theme"] })}
-            />
+            <ThemeSeriesPicker value={settings.visualTheme} onChange={(value) => onSettingsChange({ ...settings, visualTheme: value })} />
             <Segmented
               label="窗口位置"
               value={settings.windowPlacement}
@@ -1120,6 +1112,42 @@ function MetricCard({ label, value, caption }: { label: string; value: string; c
       <span>{label}</span>
       <strong>{value}</strong>
       <small>{caption}</small>
+    </div>
+  );
+}
+
+function ThemeSeriesPicker({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  return (
+    <div className="theme-series-list">
+      {visualThemeSeries.map((series) => (
+        <section className="theme-series-row" key={series.id}>
+          <div className="theme-series-copy">
+            <strong>{series.name}</strong>
+            <span>{series.description}</span>
+          </div>
+          <div className="theme-choice-list" aria-label={`${series.name}主题`}>
+            {series.themes.map((theme) => (
+              <button
+                className={`theme-choice ${value === theme.id ? "is-active" : ""}`}
+                type="button"
+                key={theme.id}
+                onClick={() => onChange(theme.id)}
+                aria-pressed={value === theme.id}
+              >
+                <span className="theme-choice-preview" aria-hidden="true">
+                  {theme.swatches.map((swatch, index) => (
+                    <span key={`${theme.id}-${swatch}-${index}`} style={{ background: swatch }} />
+                  ))}
+                </span>
+                <span className="theme-choice-meta">
+                  <strong>{theme.name}</strong>
+                  <small>{theme.mode === "day" ? "日间" : "夜间"}</small>
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
+      ))}
     </div>
   );
 }

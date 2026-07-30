@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { defaultHistory, defaultSettings, defaultShortcuts, defaultTemplates, nowIso } from "./data/defaults";
+import { getVisualTheme, getVisualThemeSeriesId } from "./data/themeCatalog";
 import { copyText, hideEditWindow, openEditWindow, openManageWindow, setEditWindowSize, setGlobalToggleShortcut } from "./lib/desktop";
 import { storageKeys, usePersistentState, writeValue } from "./lib/persistence";
 import { EditWindow } from "./components/EditWindow";
@@ -49,11 +50,14 @@ const clampNumber = (value: number, min: number, max: number, fallback: number) 
   return Math.min(max, Math.max(min, numeric));
 };
 
+const cssVariableName = (key: string) => `--${key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}`;
+
 const mergeSettingsWithDefaults = (items: SettingsState) => {
   const partial = items as Partial<SettingsState>;
   return {
     ...defaultSettings,
     ...items,
+    visualTheme: getVisualTheme(partial.visualTheme).id,
     historyLimit: clampNumber(Math.round(partial.historyLimit ?? defaultSettings.historyLimit), 30, 3000, defaultSettings.historyLimit),
     editOpacity: clampNumber(Math.round(partial.editOpacity ?? defaultSettings.editOpacity), 35, 100, defaultSettings.editOpacity),
     editWindowWidth: clampNumber(Math.round(partial.editWindowWidth ?? defaultSettings.editWindowWidth), 520, 1600, defaultSettings.editWindowWidth),
@@ -93,8 +97,15 @@ export function App() {
   }, [normalizedSettings, setSettings, settings]);
 
   useEffect(() => {
-    document.documentElement.dataset.theme = normalizedSettings.theme;
-  }, [normalizedSettings.theme]);
+    const visualTheme = getVisualTheme(normalizedSettings.visualTheme);
+    const root = document.documentElement;
+    root.dataset.theme = visualTheme.mode === "night" ? "dark" : "light";
+    root.dataset.visualTheme = visualTheme.id;
+    root.dataset.visualSeries = getVisualThemeSeriesId(visualTheme.id);
+    Object.entries(visualTheme.vars).forEach(([key, value]) => {
+      root.style.setProperty(cssVariableName(key), value);
+    });
+  }, [normalizedSettings.visualTheme]);
 
   useEffect(() => {
     document.documentElement.dataset.window = mode;

@@ -49,6 +49,7 @@ export type SettingsState = {
   restoreClipboard: boolean;
   launchAtStartup: boolean;
   theme: "system" | "light" | "dark";
+  visualTheme: string;
   autoSaveMs: number;
   historyDays: number;
   historyLimit: number;

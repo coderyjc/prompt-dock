@@ -2652,7 +2652,7 @@ dependencies = [
 
 [[package]]
 name = "prompt-dock"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "arboard",
  "serde",
