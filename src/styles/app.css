@@ -28,6 +28,7 @@
   --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
   --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --editor-opacity-percent: 100%;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -119,8 +120,13 @@ kbd {
   height: 100vh;
   padding: 0;
   background:
-    linear-gradient(135deg, color-mix(in srgb, var(--surface-solid) 96%, white), var(--surface-solid)),
-    var(--surface-solid);
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--surface-solid) var(--editor-opacity-percent), transparent),
+      color-mix(in srgb, var(--surface-muted) var(--editor-opacity-percent), transparent)
+    ),
+    transparent;
+  backdrop-filter: blur(20px) saturate(140%);
 }
 
 .editor-frame {
@@ -428,6 +434,19 @@ textarea:focus-visible {
   border-bottom: 1px solid var(--line);
 }
 
+.palette-back-button {
+  display: inline-flex;
+  width: 1.8rem;
+  height: 1.8rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-solid);
+  color: var(--muted);
+  cursor: pointer;
+}
+
 .palette-search input,
 .search-box input,
 .field input,
@@ -513,6 +532,25 @@ textarea:focus-visible {
   gap: 0.75rem;
   min-height: 2.7rem;
   padding: 0.56rem 0.72rem;
+}
+
+.command-option {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.stash-palette-option {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.stash-palette-option .option-title {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stash-palette-meta {
+  justify-self: end;
 }
 
 .template-option.is-selected,
@@ -1329,9 +1367,9 @@ textarea:focus-visible {
 }
 
 .stash-item {
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.72rem;
+  gap: 0.68rem;
   padding: 0.86rem;
   border: 1px solid var(--line);
   border-radius: 7px;
@@ -1339,10 +1377,31 @@ textarea:focus-visible {
   box-shadow: 0 10px 24px rgba(22, 31, 29, 0.04);
 }
 
+.stash-item-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.stash-item-head > span {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.stash-item-head div {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0.4rem;
+}
+
 .stash-item pre {
-  max-height: 22rem;
+  max-height: calc(1.65em * 5);
   margin: 0;
-  overflow: auto;
+  overflow: hidden;
   color: var(--text);
   font-family: "Cascadia Mono", Consolas, monospace;
   font-size: 0.92rem;
@@ -1352,8 +1411,27 @@ textarea:focus-visible {
   user-select: text;
 }
 
+.stash-item.is-expanded pre {
+  max-height: none;
+}
+
 .stash-item .icon-button {
   align-self: flex-start;
+}
+
+.stash-expand-button {
+  justify-self: end;
+  border: 0;
+  background: transparent;
+  color: var(--accent-strong);
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 680;
+  padding: 0.1rem 0;
+}
+
+.stash-expand-button:hover {
+  text-decoration: underline;
 }
 
 .icon-button.danger {
@@ -1409,6 +1487,37 @@ textarea:focus-visible {
 
 .shortcut-row small {
   color: var(--muted);
+}
+
+.number-setting input {
+  width: 7.6rem;
+  height: 2rem;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-solid);
+  color: var(--text);
+  padding: 0 0.58rem;
+  text-align: right;
+}
+
+.number-setting small,
+.slider-setting strong {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 640;
+  white-space: nowrap;
+}
+
+.slider-setting input[type="range"] {
+  width: min(16rem, 34vw);
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.slider-setting input[type="range"]:focus-visible,
+.number-setting input:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 70%, transparent);
+  outline-offset: 2px;
 }
 
 .setting-stack {

@@ -22,9 +22,9 @@ import {
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { defaultShortcuts } from "../data/defaults";
 import { copyText, openExternalUrl, startWindowDrag } from "../lib/desktop";
-import { formatKeyboardShortcut, shortcutMatches } from "../lib/shortcuts";
+import { formatKeyboardShortcut } from "../lib/shortcuts";
 import { storageKeys } from "../lib/persistence";
-import type { HistoryItem, PromptStatItem, SettingsState, ShortcutItem, TemplateItem } from "../types";
+import type { HistoryItem, PromptStatItem, SettingsState, ShortcutItem, StashItem, TemplateItem } from "../types";
 
 type Section = "stats" | "templates" | "history" | "stash" | "appearance" | "settings" | "about";
 
@@ -54,13 +54,15 @@ type ManageWindowProps = {
   templates: TemplateItem[];
   history: HistoryItem[];
   promptStats: PromptStatItem[];
+  stashItems: StashItem[];
   shortcuts: ShortcutItem[];
   settings: SettingsState;
   onTemplatesChange: (templates: TemplateItem[]) => void;
   onHistoryChange: (history: HistoryItem[]) => void;
   onShortcutsChange: (shortcuts: ShortcutItem[]) => void;
   onSettingsChange: (settings: SettingsState) => void;
-  onDraftChange: (draft: string) => void;
+  onResumeStash: (item: StashItem) => void | Promise<void>;
+  onDeleteStash: (item: StashItem) => void;
   onRestoreHistory: (history: HistoryItem) => void;
 };
 
@@ -178,13 +180,15 @@ export function ManageWindow({
   templates,
   history,
   promptStats,
+  stashItems,
   shortcuts,
   settings,
   onTemplatesChange,
   onHistoryChange,
   onShortcutsChange,
   onSettingsChange,
-  onDraftChange,
+  onResumeStash,
+  onDeleteStash,
   onRestoreHistory
 }: ManageWindowProps) {
   const [activeSection, setActiveSection] = useState<Section>("stats");
@@ -198,6 +202,7 @@ export function ManageWindow({
   const [confirmRequest, setConfirmRequest] = useState<ConfirmRequest | null>(null);
   const [recordingShortcutId, setRecordingShortcutId] = useState<string | null>(null);
   const [heatTooltip, setHeatTooltip] = useState<HeatTooltipState | null>(null);
+  const [expandedStashIds, setExpandedStashIds] = useState<Set<string>>(() => new Set());
   const [navIndicator, setNavIndicator] = useState({ top: 0, height: 0 });
   const navRef = useRef<HTMLElement | null>(null);
   const navButtonRefs = useRef<Partial<Record<Section, HTMLButtonElement>>>({});
@@ -207,8 +212,6 @@ export function ManageWindow({
 
   const sortedTemplates = useMemo(() => sortTemplates(templates), [templates]);
   const statsModel = useMemo(() => buildStatsModel(promptStats, templates), [promptStats, templates]);
-  const shortcutById = useMemo(() => new Map(shortcuts.map((shortcut) => [shortcut.id, shortcut.keys])), [shortcuts]);
-  const stashedDraft = useMemo(() => draft.trim(), [draft]);
   const selectedTemplate = templates.find((template) => template.id === selectedTemplateId) ?? sortedTemplates[0];
   const activeHistory = history.find((item) => item.id === activeHistoryId) ?? null;
   const contextTemplate = templateMenu ? templates.find((template) => template.id === templateMenu.templateId) : null;
@@ -340,12 +343,12 @@ export function ManageWindow({
     switchSection("templates");
   };
 
-  const askClearStash = () => {
+  const askDeleteStash = (item: StashItem) => {
     setConfirmRequest({
       title: "删除暂存",
-      message: "确认删除当前自动保存的暂存 prompt？",
+      message: "确认删除这条暂存 prompt？",
       confirmLabel: "删除",
-      onConfirm: () => onDraftChange("")
+      onConfirm: () => onDeleteStash(item)
     });
   };
 
@@ -405,20 +408,6 @@ export function ManageWindow({
     window.addEventListener("keydown", handler, true);
     return () => window.removeEventListener("keydown", handler, true);
   }, [recordingShortcutId, shortcuts]);
-
-  useEffect(() => {
-    const handler = (event: KeyboardEvent) => {
-      if (recordingShortcutId) return;
-
-      if (shortcutMatches(event, shortcutById.get("stash") ?? "Ctrl + J")) {
-        event.preventDefault();
-        switchSection("stash");
-      }
-    };
-
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [activeSection, recordingShortcutId, shortcutById]);
 
   useEffect(() => {
     const consumeRequestedSection = () => {
@@ -740,24 +729,60 @@ export function ManageWindow({
         <section className="single-panel stash-panel">
           <div className="detail-heading">
             <div>
-              <p className="eyebrow">自动保存</p>
+              <p className="eyebrow">续写队列</p>
               <h2>暂存</h2>
             </div>
           </div>
           <div className="stash-list">
-            {stashedDraft ? (
-              <article className="stash-item">
-                <pre>{draft}</pre>
-                <button className="icon-button danger" type="button" onClick={askClearStash} title="删除暂存">
-                  <Trash2 size={17} />
-                </button>
-              </article>
-            ) : (
+            {stashItems.map((item) => {
+              const expanded = expandedStashIds.has(item.id);
+              const canExpand = item.body.split("\n").length > 5 || item.body.length > 360;
+              return (
+                <article className={`stash-item ${expanded ? "is-expanded" : ""}`} key={item.id}>
+                  <div className="stash-item-head">
+                    <span>
+                      <time>{new Date(item.createdAt).toLocaleString()}</time>
+                      <small>{item.body.length} 字</small>
+                    </span>
+                    <div>
+                      <button className="tool-button" type="button" onClick={() => void onResumeStash(item)}>
+                        <FileText size={16} />
+                        书写
+                      </button>
+                      <button className="icon-button danger" type="button" onClick={() => askDeleteStash(item)} title="删除暂存">
+                        <Trash2 size={17} />
+                      </button>
+                    </div>
+                  </div>
+                  <pre>{item.body}</pre>
+                  {canExpand ? (
+                    <button
+                      className="stash-expand-button"
+                      type="button"
+                      onClick={() =>
+                        setExpandedStashIds((ids) => {
+                          const next = new Set(ids);
+                          if (next.has(item.id)) {
+                            next.delete(item.id);
+                          } else {
+                            next.add(item.id);
+                          }
+                          return next;
+                        })
+                      }
+                    >
+                      {expanded ? "收起" : "展开"}
+                    </button>
+                  ) : null}
+                </article>
+              );
+            })}
+            {stashItems.length === 0 ? (
               <div className="empty-state">
                 <strong>暂无暂存</strong>
-                <span>编辑窗口中未提交的 prompt 会显示在这里。</span>
+                <span>在编辑窗口按暂存快捷键后，这里会保留可续写的 prompt。</span>
               </div>
-            )}
+            ) : null}
           </div>
         </section>
       );
@@ -855,6 +880,16 @@ export function ManageWindow({
                 <ActionTile icon={Upload} title="恢复备份" body="从 JSON 备份恢复本地数据。" />
                 <Toggle label="开机自启动" value={settings.launchAtStartup} onChange={(value) => onSettingsChange({ ...settings, launchAtStartup: value })} />
               </div>
+              <div className="setting-stack">
+                <NumberSetting
+                  label="历史记录保留数"
+                  value={settings.historyLimit}
+                  min={30}
+                  max={3000}
+                  unit="条"
+                  onChange={(value) => onSettingsChange({ ...settings, historyLimit: value })}
+                />
+              </div>
             </section>
           </div>
         </section>
@@ -890,6 +925,31 @@ export function ManageWindow({
                 ["last", "上次位置"]
               ]}
               onChange={(value) => onSettingsChange({ ...settings, windowPlacement: value as SettingsState["windowPlacement"] })}
+            />
+            <SliderSetting
+              label="编辑框透明度"
+              value={settings.editOpacity}
+              min={35}
+              max={100}
+              step={5}
+              unit="%"
+              onChange={(value) => onSettingsChange({ ...settings, editOpacity: value })}
+            />
+            <NumberSetting
+              label="编辑框宽度"
+              value={settings.editWindowWidth}
+              min={520}
+              max={1600}
+              unit="px"
+              onChange={(value) => onSettingsChange({ ...settings, editWindowWidth: value })}
+            />
+            <NumberSetting
+              label="编辑框高度"
+              value={settings.editWindowHeight}
+              min={360}
+              max={1000}
+              unit="px"
+              onChange={(value) => onSettingsChange({ ...settings, editWindowHeight: value })}
             />
           </div>
         </section>
@@ -1086,6 +1146,92 @@ function Toggle({ label, value, onChange }: { label: string; value: boolean; onC
       <button className={`toggle ${value ? "is-on" : ""}`} type="button" onClick={() => onChange(!value)} aria-pressed={value}>
         <span />
       </button>
+    </label>
+  );
+}
+
+function SliderSetting({
+  label,
+  value,
+  min,
+  max,
+  step,
+  unit,
+  onChange
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  unit: string;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="setting-row slider-setting">
+      <span>{label}</span>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+      />
+      <strong>
+        {value}
+        {unit}
+      </strong>
+    </label>
+  );
+}
+
+function NumberSetting({
+  label,
+  value,
+  min,
+  max,
+  unit,
+  onChange
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  unit: string;
+  onChange: (value: number) => void;
+}) {
+  const [draft, setDraft] = useState(String(value));
+
+  useEffect(() => {
+    setDraft(String(value));
+  }, [value]);
+
+  const commit = () => {
+    const parsed = Number(draft);
+    const next = Number.isFinite(parsed) ? Math.min(max, Math.max(min, Math.round(parsed))) : value;
+    setDraft(String(next));
+    if (next !== value) onChange(next);
+  };
+
+  return (
+    <label className="setting-row number-setting">
+      <span>{label}</span>
+      <input
+        type="number"
+        min={min}
+        max={max}
+        value={draft}
+        onBlur={commit}
+        onChange={(event) => setDraft(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") event.currentTarget.blur();
+        }}
+      />
+      <small>
+        {min}-{max}
+        {unit}
+      </small>
     </label>
   );
 }

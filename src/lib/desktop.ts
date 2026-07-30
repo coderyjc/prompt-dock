@@ -21,6 +21,15 @@ export const setGlobalToggleShortcut = async (keys: string) => {
   }
 };
 
+export const setEditWindowSize = async (width: number, height: number) => {
+  try {
+    await invokeCommand("set_edit_window_size", { width, height });
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 export const copyText = async (text: string) => {
   try {
     await invokeCommand("copy_prompt", { text });

@@ -27,6 +27,12 @@ export type PromptStatItem = {
   createdAt: string;
 };
 
+export type StashItem = {
+  id: string;
+  body: string;
+  createdAt: string;
+};
+
 export type ShortcutItem = {
   id: string;
   action: string;
@@ -45,5 +51,9 @@ export type SettingsState = {
   theme: "system" | "light" | "dark";
   autoSaveMs: number;
   historyDays: number;
+  historyLimit: number;
+  editOpacity: number;
+  editWindowWidth: number;
+  editWindowHeight: number;
   windowPlacement: "center" | "cursor" | "last";
 };

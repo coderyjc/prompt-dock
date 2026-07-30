@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { defaultHistory, defaultSettings, defaultShortcuts, defaultTemplates, nowIso } from "./data/defaults";
-import { copyText, hideEditWindow, openEditWindow, openManageWindow, setGlobalToggleShortcut } from "./lib/desktop";
+import { copyText, hideEditWindow, openEditWindow, openManageWindow, setEditWindowSize, setGlobalToggleShortcut } from "./lib/desktop";
 import { storageKeys, usePersistentState, writeValue } from "./lib/persistence";
 import { EditWindow } from "./components/EditWindow";
 import { ManageWindow } from "./components/ManageWindow";
-import type { HistoryItem, PromptStatItem, SettingsState, ShortcutItem, TemplateItem, WindowMode } from "./types";
+import type { HistoryItem, PromptStatItem, SettingsState, ShortcutItem, StashItem, TemplateItem, WindowMode } from "./types";
 
 const readInitialMode = (): WindowMode => {
   const mode = new URLSearchParams(window.location.search).get("window");
@@ -25,6 +25,12 @@ const makePromptStat = (historyItem: HistoryItem): PromptStatItem => ({
   createdAt: historyItem.createdAt
 });
 
+const makeStashItem = (body: string): StashItem => ({
+  id: `stash-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+  body,
+  createdAt: nowIso()
+});
+
 const mergeShortcutsWithDefaults = (items: ShortcutItem[]) => {
   const defaultIds = new Set(defaultShortcuts.map((shortcut) => shortcut.id));
   const currentById = new Map(items.map((shortcut) => [shortcut.id, shortcut]));
@@ -38,31 +44,69 @@ const mergeShortcutsWithDefaults = (items: ShortcutItem[]) => {
 
 const shortcutsEqual = (left: ShortcutItem[], right: ShortcutItem[]) => JSON.stringify(left) === JSON.stringify(right);
 
+const clampNumber = (value: number, min: number, max: number, fallback: number) => {
+  const numeric = Number.isFinite(value) ? value : fallback;
+  return Math.min(max, Math.max(min, numeric));
+};
+
+const mergeSettingsWithDefaults = (items: SettingsState) => {
+  const partial = items as Partial<SettingsState>;
+  return {
+    ...defaultSettings,
+    ...items,
+    historyLimit: clampNumber(Math.round(partial.historyLimit ?? defaultSettings.historyLimit), 30, 3000, defaultSettings.historyLimit),
+    editOpacity: clampNumber(Math.round(partial.editOpacity ?? defaultSettings.editOpacity), 35, 100, defaultSettings.editOpacity),
+    editWindowWidth: clampNumber(Math.round(partial.editWindowWidth ?? defaultSettings.editWindowWidth), 520, 1600, defaultSettings.editWindowWidth),
+    editWindowHeight: clampNumber(Math.round(partial.editWindowHeight ?? defaultSettings.editWindowHeight), 360, 1000, defaultSettings.editWindowHeight)
+  };
+};
+
+const settingsEqual = (left: SettingsState, right: SettingsState) => JSON.stringify(left) === JSON.stringify(right);
+
 export function App() {
   const [mode] = useState<WindowMode>(() => readInitialMode());
   const [draft, setDraft] = usePersistentState(storageKeys.draft, "");
   const [templates, setTemplates] = usePersistentState(storageKeys.templates, defaultTemplates);
   const [history, setHistory] = usePersistentState(storageKeys.history, defaultHistory);
   const [promptStats, setPromptStats] = usePersistentState<PromptStatItem[]>(storageKeys.promptStats, []);
+  const [stashItems, setStashItems] = usePersistentState<StashItem[]>(storageKeys.stash, []);
   const [shortcuts, setShortcuts] = usePersistentState<ShortcutItem[]>(storageKeys.shortcuts, defaultShortcuts);
   const [settings, setSettings] = usePersistentState<SettingsState>(storageKeys.settings, defaultSettings);
   const [saveState, setSaveState] = useState<"saved" | "saving">("saved");
 
-  const sortedHistory = useMemo(() => [...history].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 120), [history]);
+  const normalizedSettings = useMemo(() => mergeSettingsWithDefaults(settings), [settings]);
+  const sortedHistory = useMemo(
+    () => [...history].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, normalizedSettings.historyLimit),
+    [history, normalizedSettings.historyLimit]
+  );
 
   useEffect(() => {
     setSaveState("saving");
-    const timeout = window.setTimeout(() => setSaveState("saved"), settings.autoSaveMs);
+    const timeout = window.setTimeout(() => setSaveState("saved"), normalizedSettings.autoSaveMs);
     return () => window.clearTimeout(timeout);
-  }, [draft, settings.autoSaveMs]);
+  }, [draft, normalizedSettings.autoSaveMs]);
 
   useEffect(() => {
-    document.documentElement.dataset.theme = settings.theme;
-  }, [settings.theme]);
+    if (!settingsEqual(settings, normalizedSettings)) {
+      setSettings(normalizedSettings);
+    }
+  }, [normalizedSettings, setSettings, settings]);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = normalizedSettings.theme;
+  }, [normalizedSettings.theme]);
 
   useEffect(() => {
     document.documentElement.dataset.window = mode;
   }, [mode]);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty("--editor-opacity-percent", `${normalizedSettings.editOpacity}%`);
+  }, [normalizedSettings.editOpacity]);
+
+  useEffect(() => {
+    void setEditWindowSize(normalizedSettings.editWindowWidth, normalizedSettings.editWindowHeight);
+  }, [normalizedSettings.editWindowHeight, normalizedSettings.editWindowWidth]);
 
   useEffect(() => {
     const preventContextMenu = (event: MouseEvent) => event.preventDefault();
@@ -102,6 +146,10 @@ export function App() {
     });
   }, [history, setPromptStats]);
 
+  useEffect(() => {
+    setHistory((items) => (items.length > normalizedSettings.historyLimit ? items.slice(0, normalizedSettings.historyLimit) : items));
+  }, [normalizedSettings.historyLimit, setHistory]);
+
   const updateTemplateUsage = (target: TemplateItem) => {
     setTemplates((items) =>
       items.map((item) =>
@@ -134,7 +182,7 @@ export function App() {
     if (!ok) return;
 
     const nextHistory = makeHistory(committedDraft, "copied");
-    setHistory((items) => [nextHistory, ...items].slice(0, 120));
+    setHistory((items) => [nextHistory, ...items].slice(0, normalizedSettings.historyLimit));
     setPromptStats((items) => [...items, makePromptStat(nextHistory)]);
     setDraft("");
     writeValue(storageKeys.draft, "");
@@ -155,6 +203,32 @@ export function App() {
       updatedAt: nowIso()
     };
     setTemplates((items) => [next, ...items]);
+  };
+
+  const stashCurrentDraft = () => {
+    if (!draft.trim()) return false;
+    const nextStash = makeStashItem(draft);
+    setStashItems((items) => [nextStash, ...items]);
+    setDraft("");
+    writeValue(storageKeys.draft, "");
+    setSaveState("saved");
+    return true;
+  };
+
+  const resumeStash = async (item: StashItem) => {
+    const currentDraft = draft;
+    setStashItems((items) => {
+      const rest = items.filter((stashItem) => stashItem.id !== item.id);
+      return currentDraft.trim() && currentDraft !== item.body ? [makeStashItem(currentDraft), ...rest] : rest;
+    });
+    setDraft(item.body);
+    writeValue(storageKeys.draft, item.body);
+    setSaveState("saved");
+    await openEditWindow();
+  };
+
+  const deleteStash = (item: StashItem) => {
+    setStashItems((items) => items.filter((stashItem) => stashItem.id !== item.id));
   };
 
   const openManage = async () => {
@@ -185,13 +259,15 @@ export function App() {
         templates={templates}
         history={sortedHistory}
         promptStats={promptStats}
+        stashItems={stashItems}
         shortcuts={shortcuts}
-        settings={settings}
+        settings={normalizedSettings}
         onTemplatesChange={setTemplates}
         onHistoryChange={setHistory}
         onShortcutsChange={setShortcuts}
         onSettingsChange={setSettings}
-        onDraftChange={setDraft}
+        onResumeStash={resumeStash}
+        onDeleteStash={deleteStash}
         onRestoreHistory={restoreHistory}
       />
     );
@@ -201,6 +277,7 @@ export function App() {
     <EditWindow
       draft={draft}
       templates={templates}
+      stashItems={stashItems}
       shortcuts={shortcuts}
       saveState={saveState}
       onDraftChange={setDraft}
@@ -208,7 +285,8 @@ export function App() {
       onSubmit={handleSubmit}
       onOpenManage={openManage}
       onOpenHistory={() => openManageSection("history")}
-      onOpenStash={() => openManageSection("stash")}
+      onStashDraft={stashCurrentDraft}
+      onResumeStash={resumeStash}
       onSaveTemplate={handleSaveTemplate}
       onExitEdit={exitEdit}
     />

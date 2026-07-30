@@ -1,6 +1,6 @@
 import { Settings } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ShortcutItem, TemplateItem } from "../types";
+import type { ShortcutItem, StashItem, TemplateItem } from "../types";
 import { TemplatePalette } from "./TemplatePalette";
 import { startWindowDrag } from "../lib/desktop";
 import { shortcutMatches } from "../lib/shortcuts";
@@ -8,6 +8,7 @@ import { shortcutMatches } from "../lib/shortcuts";
 type EditWindowProps = {
   draft: string;
   templates: TemplateItem[];
+  stashItems: StashItem[];
   shortcuts: ShortcutItem[];
   saveState: "saved" | "saving";
   onDraftChange: (value: string) => void;
@@ -15,7 +16,8 @@ type EditWindowProps = {
   onSubmit: () => void | Promise<void>;
   onOpenManage: () => void;
   onOpenHistory: () => void;
-  onOpenStash: () => void;
+  onStashDraft: () => boolean;
+  onResumeStash: (item: StashItem) => void | Promise<void>;
   onSaveTemplate: () => void;
   onExitEdit: () => void | Promise<void>;
 };
@@ -29,6 +31,7 @@ const estimateTokens = (value: string) => {
 export function EditWindow({
   draft,
   templates,
+  stashItems,
   shortcuts,
   saveState,
   onDraftChange,
@@ -36,12 +39,14 @@ export function EditWindow({
   onSubmit,
   onOpenManage,
   onOpenHistory,
-  onOpenStash,
+  onStashDraft,
+  onResumeStash,
   onSaveTemplate,
   onExitEdit
 }: EditWindowProps) {
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteMode, setPaletteMode] = useState<"root" | "stash">("root");
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const defaultHint = "Ctrl+Enter 复制并退出";
@@ -60,6 +65,13 @@ export function EditWindow({
     });
   }, [query, templates]);
 
+  const filteredStashItems = useMemo(() => {
+    const text = query.trim().toLowerCase();
+    if (!text) return stashItems;
+    return stashItems.filter((item) => item.body.toLowerCase().includes(text));
+  }, [query, stashItems]);
+
+  const paletteOptionCount = paletteMode === "stash" ? filteredStashItems.length : filteredTemplates.length + 1;
   const tokenCount = estimateTokens(draft);
   const shortcutById = useMemo(() => {
     return new Map(shortcuts.map((shortcut) => [shortcut.id, shortcut.keys]));
@@ -72,10 +84,14 @@ export function EditWindow({
   }, []);
 
   useEffect(() => {
-    if (selectedIndex >= filteredTemplates.length) {
-      setSelectedIndex(Math.max(0, filteredTemplates.length - 1));
+    if (selectedIndex >= paletteOptionCount) {
+      setSelectedIndex(Math.max(0, paletteOptionCount - 1));
     }
-  }, [filteredTemplates.length, selectedIndex]);
+  }, [paletteOptionCount, selectedIndex]);
+
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [paletteMode, query]);
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
@@ -87,21 +103,36 @@ export function EditWindow({
         }
         if (event.key === "ArrowDown") {
           event.preventDefault();
-          setSelectedIndex((index) => Math.min(index + 1, filteredTemplates.length - 1));
+          setSelectedIndex((index) => Math.min(index + 1, Math.max(0, paletteOptionCount - 1)));
         }
         if (event.key === "ArrowUp") {
           event.preventDefault();
           setSelectedIndex((index) => Math.max(index - 1, 0));
         }
-        if (event.key === "Enter" && filteredTemplates[selectedIndex]) {
+        if (event.key === "Enter") {
           event.preventDefault();
-          applyTemplate(filteredTemplates[selectedIndex]);
+          if (paletteMode === "stash") {
+            const selectedStash = filteredStashItems[selectedIndex];
+            if (selectedStash) void resumeStash(selectedStash);
+            return;
+          }
+          if (selectedIndex === 0) {
+            setPaletteMode("stash");
+            setQuery("");
+            setSelectedIndex(0);
+            return;
+          }
+          const selectedTemplate = filteredTemplates[selectedIndex - 1];
+          if (selectedTemplate) applyTemplate(selectedTemplate);
         }
         return;
       }
 
       if (shortcutMatches(event, getShortcut("template", "Ctrl + P"))) {
         event.preventDefault();
+        setPaletteMode("root");
+        setQuery("");
+        setSelectedIndex(0);
         setPaletteOpen(true);
       }
       if (shortcutMatches(event, getShortcut("manage", "Ctrl + ,"))) {
@@ -123,7 +154,8 @@ export function EditWindow({
       }
       if (shortcutMatches(event, getShortcut("stash", "Ctrl + J"))) {
         event.preventDefault();
-        onOpenStash();
+        setHint(onStashDraft() ? "已放入暂存箱" : "没有内容可暂存");
+        window.requestAnimationFrame(() => editorRef.current?.focus());
       }
       if (shortcutMatches(event, getShortcut("escape", "Esc"))) {
         event.preventDefault();
@@ -133,7 +165,21 @@ export function EditWindow({
 
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [filteredTemplates, getShortcut, onExitEdit, onOpenHistory, onOpenManage, onOpenStash, onSaveTemplate, onSubmit, paletteOpen, selectedIndex]);
+  }, [
+    filteredStashItems,
+    filteredTemplates,
+    getShortcut,
+    onExitEdit,
+    onOpenHistory,
+    onOpenManage,
+    onSaveTemplate,
+    onStashDraft,
+    onSubmit,
+    paletteMode,
+    paletteOpen,
+    paletteOptionCount,
+    selectedIndex
+  ]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -146,6 +192,14 @@ export function EditWindow({
     const editor = editorRef.current;
     onApplyTemplate(template, editor?.selectionStart, editor?.selectionEnd);
     setPaletteOpen(false);
+    setQuery("");
+    window.requestAnimationFrame(() => editorRef.current?.focus());
+  };
+
+  const resumeStash = async (item: StashItem) => {
+    await onResumeStash(item);
+    setPaletteOpen(false);
+    setPaletteMode("root");
     setQuery("");
     window.requestAnimationFrame(() => editorRef.current?.focus());
   };
@@ -191,12 +245,26 @@ export function EditWindow({
 
       <TemplatePalette
         open={paletteOpen}
+        mode={paletteMode}
         query={query}
         selectedIndex={selectedIndex}
         templates={filteredTemplates}
+        stashItems={filteredStashItems}
+        stashCount={stashItems.length}
         onQueryChange={setQuery}
         onSelectIndex={setSelectedIndex}
-        onApply={applyTemplate}
+        onApplyTemplate={applyTemplate}
+        onOpenStashBox={() => {
+          setPaletteMode("stash");
+          setQuery("");
+          setSelectedIndex(0);
+        }}
+        onBackToRoot={() => {
+          setPaletteMode("root");
+          setQuery("");
+          setSelectedIndex(0);
+        }}
+        onResumeStash={(item) => void resumeStash(item)}
         onClose={() => setPaletteOpen(false)}
       />
     </main>

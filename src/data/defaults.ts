@@ -75,7 +75,7 @@ export const defaultShortcuts: ShortcutItem[] = [
   { id: "template", action: "打开模板选择", keys: "Ctrl + P", scope: "编辑窗口" },
   { id: "save-template", action: "保存为模板", keys: "Ctrl + Shift + S", scope: "编辑窗口" },
   { id: "history", action: "打开历史草稿", keys: "Ctrl + H", scope: "编辑窗口" },
-  { id: "stash", action: "打开暂存", keys: "Ctrl + J", scope: "编辑窗口/工作台" },
+  { id: "stash", action: "暂存当前 prompt", keys: "Ctrl + J", scope: "编辑窗口" },
   { id: "manage", action: "打开工作台", keys: "Ctrl + ,", scope: "编辑窗口" },
   { id: "escape", action: "关闭弹层/隐藏", keys: "Esc", scope: "编辑窗口" }
 ];
@@ -88,5 +88,9 @@ export const defaultSettings: SettingsState = {
   theme: "system",
   autoSaveMs: 500,
   historyDays: 30,
+  historyLimit: 200,
+  editOpacity: 100,
+  editWindowWidth: 760,
+  editWindowHeight: 520,
   windowPlacement: "center"
 };

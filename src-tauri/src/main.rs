@@ -3,7 +3,7 @@
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Manager, State, WindowEvent,
+    AppHandle, LogicalSize, Manager, Size, State, WindowEvent,
 };
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 use std::{process::Command, str::FromStr, sync::Mutex};
@@ -91,6 +91,18 @@ fn set_global_toggle_shortcut(
 
     *current = next;
     Ok(())
+}
+
+#[tauri::command]
+fn set_edit_window_size(app: AppHandle, width: u32, height: u32) -> Result<(), String> {
+    let window = app
+        .get_webview_window("edit")
+        .ok_or_else(|| "edit window not found".to_string())?;
+    let width = width.clamp(520, 1600);
+    let height = height.clamp(360, 1000);
+    window
+        .set_size(Size::Logical(LogicalSize::new(width as f64, height as f64)))
+        .map_err(|error| error.to_string())
 }
 
 fn show_window(app: &AppHandle, label: &str) -> Result<(), String> {
@@ -209,6 +221,7 @@ fn main() {
             open_edit_window,
             hide_manage_window,
             hide_edit_window,
+            set_edit_window_size,
             set_global_toggle_shortcut
         ])
         .on_window_event(|window, event| {
