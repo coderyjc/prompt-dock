@@ -86,7 +86,10 @@ export function TemplatePalette({
               role="option"
               aria-selected={index === selectedIndex}
             >
-              <span className="option-title">{template.title}</span>
+              <span className="option-title">
+                {template.isFavorite ? <span className="pin-glyph" aria-label="置顶">📌</span> : null}
+                {template.title}
+              </span>
               <span className="option-description">{template.description}</span>
             </button>
           ))}

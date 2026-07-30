@@ -12,6 +12,15 @@ export const startWindowDrag = async () => {
   }
 };
 
+export const setGlobalToggleShortcut = async (keys: string) => {
+  try {
+    await invokeCommand("set_global_toggle_shortcut", { keys });
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 export const copyText = async (text: string) => {
   try {
     await invokeCommand("copy_prompt", { text });

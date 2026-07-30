@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { defaultHistory, defaultSettings, defaultShortcuts, defaultTemplates, nowIso } from "./data/defaults";
-import { copyText, hideEditWindow, openEditWindow, openManageWindow } from "./lib/desktop";
+import { copyText, hideEditWindow, openEditWindow, openManageWindow, setGlobalToggleShortcut } from "./lib/desktop";
 import { storageKeys, usePersistentState, writeValue } from "./lib/persistence";
 import { EditWindow } from "./components/EditWindow";
 import { ManageWindow } from "./components/ManageWindow";
-import type { HistoryItem, SettingsState, TemplateItem, WindowMode } from "./types";
+import type { HistoryItem, SettingsState, ShortcutItem, TemplateItem, WindowMode } from "./types";
 
 const readInitialMode = (): WindowMode => {
   const mode = new URLSearchParams(window.location.search).get("window");
@@ -23,6 +23,7 @@ export function App() {
   const [draft, setDraft] = usePersistentState(storageKeys.draft, "");
   const [templates, setTemplates] = usePersistentState(storageKeys.templates, defaultTemplates);
   const [history, setHistory] = usePersistentState(storageKeys.history, defaultHistory);
+  const [shortcuts, setShortcuts] = usePersistentState<ShortcutItem[]>(storageKeys.shortcuts, defaultShortcuts);
   const [settings, setSettings] = usePersistentState<SettingsState>(storageKeys.settings, defaultSettings);
   const [saveState, setSaveState] = useState<"saved" | "saving">("saved");
 
@@ -57,6 +58,11 @@ export function App() {
       window.removeEventListener("keydown", preventPrintShortcut, true);
     };
   }, []);
+
+  useEffect(() => {
+    const toggleShortcut = shortcuts.find((shortcut) => shortcut.id === "toggle");
+    if (toggleShortcut) void setGlobalToggleShortcut(toggleShortcut.keys);
+  }, [shortcuts]);
 
   const updateTemplateUsage = (target: TemplateItem) => {
     setTemplates((items) =>
@@ -137,15 +143,12 @@ export function App() {
         draft={draft}
         templates={templates}
         history={sortedHistory}
-        shortcuts={defaultShortcuts}
+        shortcuts={shortcuts}
         settings={settings}
         onTemplatesChange={setTemplates}
         onHistoryChange={setHistory}
+        onShortcutsChange={setShortcuts}
         onSettingsChange={setSettings}
-        onUseTemplate={(template) => {
-          applyTemplate(template);
-          openEdit();
-        }}
         onRestoreHistory={restoreHistory}
         onOpenEdit={openEdit}
       />
@@ -157,6 +160,7 @@ export function App() {
       draft={draft}
       templates={templates}
       history={sortedHistory}
+      shortcuts={shortcuts}
       saveState={saveState}
       onDraftChange={setDraft}
       onApplyTemplate={applyTemplate}

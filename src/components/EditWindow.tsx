@@ -1,13 +1,15 @@
 import { Settings } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { HistoryItem, TemplateItem } from "../types";
+import type { HistoryItem, ShortcutItem, TemplateItem } from "../types";
 import { TemplatePalette } from "./TemplatePalette";
 import { startWindowDrag } from "../lib/desktop";
+import { shortcutMatches } from "../lib/shortcuts";
 
 type EditWindowProps = {
   draft: string;
   templates: TemplateItem[];
   history: HistoryItem[];
+  shortcuts: ShortcutItem[];
   saveState: "saved" | "saving";
   onDraftChange: (value: string) => void;
   onApplyTemplate: (template: TemplateItem, cursorStart?: number, cursorEnd?: number) => void;
@@ -28,6 +30,7 @@ export function EditWindow({
   draft,
   templates,
   history,
+  shortcuts,
   saveState,
   onDraftChange,
   onApplyTemplate,
@@ -58,6 +61,11 @@ export function EditWindow({
   }, [query, templates]);
 
   const tokenCount = estimateTokens(draft);
+  const shortcutById = useMemo(() => {
+    return new Map(shortcuts.map((shortcut) => [shortcut.id, shortcut.keys]));
+  }, [shortcuts]);
+
+  const getShortcut = (id: string, fallback: string) => shortcutById.get(id) ?? fallback;
 
   useEffect(() => {
     editorRef.current?.focus();
@@ -92,28 +100,28 @@ export function EditWindow({
         return;
       }
 
-      if (event.ctrlKey && event.key.toLowerCase() === "p") {
+      if (shortcutMatches(event, getShortcut("template", "Ctrl + P"))) {
         event.preventDefault();
         setPaletteOpen(true);
       }
-      if (event.ctrlKey && event.key === ",") {
+      if (shortcutMatches(event, getShortcut("manage", "Ctrl + ,"))) {
         event.preventDefault();
         onOpenManage();
       }
-      if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === "s") {
+      if (shortcutMatches(event, getShortcut("save-template", "Ctrl + Shift + S"))) {
         event.preventDefault();
         onSaveTemplate();
         setHint("已保存为固定模板");
       }
-      if (event.ctrlKey && event.key === "Enter") {
+      if (shortcutMatches(event, getShortcut("submit", "Ctrl + Enter"))) {
         event.preventDefault();
         void onSubmit();
       }
-      if (event.ctrlKey && event.key.toLowerCase() === "h") {
+      if (shortcutMatches(event, getShortcut("history", "Ctrl + H"))) {
         event.preventDefault();
         onOpenHistory();
       }
-      if (event.key === "Escape") {
+      if (shortcutMatches(event, getShortcut("escape", "Esc"))) {
         event.preventDefault();
         void onExitEdit();
       }
@@ -121,7 +129,7 @@ export function EditWindow({
 
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [filteredTemplates, onExitEdit, onOpenHistory, onOpenManage, onSaveTemplate, onSubmit, paletteOpen, selectedIndex]);
+  }, [filteredTemplates, getShortcut, onExitEdit, onOpenHistory, onOpenManage, onSaveTemplate, onSubmit, paletteOpen, selectedIndex]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {

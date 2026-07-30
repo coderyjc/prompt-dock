@@ -8,18 +8,34 @@ import {
   Keyboard,
   MonitorUp,
   Palette,
+  Pin,
   Plus,
   Save,
   Search,
-  Star,
   Trash2,
-  Upload
+  Upload,
+  X
 } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { startWindowDrag } from "../lib/desktop";
+import { defaultShortcuts } from "../data/defaults";
+import { copyText, startWindowDrag } from "../lib/desktop";
+import { formatKeyboardShortcut } from "../lib/shortcuts";
 import type { HistoryItem, SettingsState, ShortcutItem, TemplateItem } from "../types";
 
 type Section = "templates" | "history" | "shortcuts" | "output" | "appearance" | "data";
+
+type ConfirmRequest = {
+  title: string;
+  message: string;
+  confirmLabel: string;
+  onConfirm: () => void;
+};
+
+type TemplateMenuState = {
+  templateId: string;
+  x: number;
+  y: number;
+};
 
 type ManageWindowProps = {
   draft: string;
@@ -29,8 +45,8 @@ type ManageWindowProps = {
   settings: SettingsState;
   onTemplatesChange: (templates: TemplateItem[]) => void;
   onHistoryChange: (history: HistoryItem[]) => void;
+  onShortcutsChange: (shortcuts: ShortcutItem[]) => void;
   onSettingsChange: (settings: SettingsState) => void;
-  onUseTemplate: (template: TemplateItem) => void;
   onRestoreHistory: (history: HistoryItem) => void;
   onOpenEdit: () => void;
 };
@@ -44,6 +60,16 @@ const navItems: Array<{ id: Section; label: string; icon: typeof FileText }> = [
   { id: "data", label: "数据", icon: Database }
 ];
 
+const sortTemplates = (items: TemplateItem[]) => {
+  return [...items].sort((a, b) => {
+    if (a.isFavorite !== b.isFavorite) return a.isFavorite ? -1 : 1;
+    if (a.usageCount !== b.usageCount) return b.usageCount - a.usageCount;
+    return b.updatedAt.localeCompare(a.updatedAt);
+  });
+};
+
+const makeTemplateId = () => `tpl-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
 export function ManageWindow({
   draft,
   templates,
@@ -52,8 +78,8 @@ export function ManageWindow({
   settings,
   onTemplatesChange,
   onHistoryChange,
+  onShortcutsChange,
   onSettingsChange,
-  onUseTemplate,
   onRestoreHistory,
   onOpenEdit
 }: ManageWindowProps) {
@@ -62,7 +88,11 @@ export function ManageWindow({
   const [contentPhase, setContentPhase] = useState<"ready" | "leaving" | "entering">("ready");
   const [query, setQuery] = useState("");
   const [selectedTemplateId, setSelectedTemplateId] = useState(templates[0]?.id ?? "");
+  const [templateMenu, setTemplateMenu] = useState<TemplateMenuState | null>(null);
   const [historyClearArmed, setHistoryClearArmed] = useState(false);
+  const [activeHistoryId, setActiveHistoryId] = useState<string | null>(null);
+  const [confirmRequest, setConfirmRequest] = useState<ConfirmRequest | null>(null);
+  const [recordingShortcutId, setRecordingShortcutId] = useState<string | null>(null);
   const [navIndicator, setNavIndicator] = useState({ top: 0, height: 0 });
   const navRef = useRef<HTMLElement | null>(null);
   const navButtonRefs = useRef<Partial<Record<Section, HTMLButtonElement>>>({});
@@ -70,46 +100,18 @@ export function ManageWindow({
   const settleTimer = useRef<number | undefined>(undefined);
   const historyClearTimer = useRef<number | undefined>(undefined);
 
-  const selectedTemplate = templates.find((template) => template.id === selectedTemplateId) ?? templates[0];
+  const sortedTemplates = useMemo(() => sortTemplates(templates), [templates]);
+  const selectedTemplate = templates.find((template) => template.id === selectedTemplateId) ?? sortedTemplates[0];
+  const activeHistory = history.find((item) => item.id === activeHistoryId) ?? null;
+  const contextTemplate = templateMenu ? templates.find((template) => template.id === templateMenu.templateId) : null;
+
   const filteredTemplates = useMemo(() => {
     const text = query.trim().toLowerCase();
-    if (!text) return templates;
-    return templates.filter((template) =>
+    if (!text) return sortedTemplates;
+    return sortedTemplates.filter((template) =>
       [template.title, template.description, template.body].join(" ").toLowerCase().includes(text)
     );
-  }, [query, templates]);
-
-  const updateSelectedTemplate = (patch: Partial<TemplateItem>) => {
-    if (!selectedTemplate) return;
-    onTemplatesChange(
-      templates.map((template) =>
-        template.id === selectedTemplate.id ? { ...template, ...patch, updatedAt: new Date().toISOString() } : template
-      )
-    );
-  };
-
-  const createTemplate = () => {
-    const id = `tpl-${Date.now()}`;
-    const next: TemplateItem = {
-      id,
-      title: "新固定模板",
-      description: "描述这个模板适合什么场景。",
-      body: draft || "请在这里写固定模板正文。",
-      tags: [],
-      isFavorite: false,
-      usageCount: 0,
-      updatedAt: new Date().toISOString()
-    };
-    onTemplatesChange([next, ...templates]);
-    setSelectedTemplateId(id);
-  };
-
-  const deleteSelectedTemplate = () => {
-    if (!selectedTemplate) return;
-    const next = templates.filter((template) => template.id !== selectedTemplate.id);
-    onTemplatesChange(next);
-    setSelectedTemplateId(next[0]?.id ?? "");
-  };
+  }, [query, sortedTemplates]);
 
   const switchSection = (nextSection: Section) => {
     if (nextSection === activeSection) return;
@@ -126,17 +128,117 @@ export function ManageWindow({
     }, 170);
   };
 
+  const updateSelectedTemplate = (patch: Partial<TemplateItem>) => {
+    if (!selectedTemplate) return;
+    onTemplatesChange(
+      templates.map((template) =>
+        template.id === selectedTemplate.id ? { ...template, ...patch, updatedAt: new Date().toISOString() } : template
+      )
+    );
+  };
+
+  const createTemplate = () => {
+    const id = makeTemplateId();
+    const next: TemplateItem = {
+      id,
+      title: "新固定模板",
+      description: "描述这个模板适合什么场景。",
+      body: draft || "请在这里写固定模板正文。",
+      tags: [],
+      isFavorite: false,
+      usageCount: 0,
+      updatedAt: new Date().toISOString()
+    };
+    onTemplatesChange([next, ...templates]);
+    setSelectedTemplateId(id);
+  };
+
+  const duplicateTemplate = (template: TemplateItem) => {
+    const index = templates.findIndex((item) => item.id === template.id);
+    const nextTemplate: TemplateItem = {
+      ...template,
+      id: makeTemplateId(),
+      title: `${template.title} copy`,
+      updatedAt: new Date().toISOString()
+    };
+    const next = [...templates];
+    next.splice(index >= 0 ? index + 1 : 0, 0, nextTemplate);
+    onTemplatesChange(next);
+    setSelectedTemplateId(nextTemplate.id);
+    setTemplateMenu(null);
+  };
+
+  const deleteTemplateById = (templateId: string) => {
+    const next = templates.filter((template) => template.id !== templateId);
+    onTemplatesChange(next);
+    if (selectedTemplateId === templateId) {
+      setSelectedTemplateId(sortTemplates(next)[0]?.id ?? "");
+    }
+    setTemplateMenu(null);
+  };
+
+  const askDeleteTemplate = (template: TemplateItem) => {
+    setTemplateMenu(null);
+    setConfirmRequest({
+      title: "删除模板",
+      message: `确认删除「${template.title}」？这个操作会移除模板正文和说明。`,
+      confirmLabel: "删除",
+      onConfirm: () => deleteTemplateById(template.id)
+    });
+  };
+
+  const askDeleteHistory = (item: HistoryItem) => {
+    setConfirmRequest({
+      title: "删除历史",
+      message: "确认删除这条 prompt 历史？",
+      confirmLabel: "删除",
+      onConfirm: () => {
+        onHistoryChange(history.filter((historyItem) => historyItem.id !== item.id));
+        if (activeHistoryId === item.id) setActiveHistoryId(null);
+      }
+    });
+  };
+
   const requestClearHistory = () => {
     if (historyClearArmed) {
       window.clearTimeout(historyClearTimer.current);
       setHistoryClearArmed(false);
       onHistoryChange([]);
+      setActiveHistoryId(null);
       return;
     }
 
     setHistoryClearArmed(true);
     window.clearTimeout(historyClearTimer.current);
     historyClearTimer.current = window.setTimeout(() => setHistoryClearArmed(false), 3200);
+  };
+
+  const saveHistoryAsTemplate = (item: HistoryItem) => {
+    const id = makeTemplateId();
+    const next: TemplateItem = {
+      id,
+      title: `历史模板 ${new Date(item.createdAt).toLocaleDateString()}`,
+      description: "从历史记录保存。",
+      body: item.body,
+      tags: ["历史"],
+      isFavorite: false,
+      usageCount: 0,
+      updatedAt: new Date().toISOString()
+    };
+    onTemplatesChange([next, ...templates]);
+    setSelectedTemplateId(id);
+    setActiveHistoryId(null);
+    switchSection("templates");
+  };
+
+  const updateShortcut = (shortcutId: string, keys: string) => {
+    onShortcutsChange(shortcuts.map((shortcut) => (shortcut.id === shortcutId ? { ...shortcut, keys } : shortcut)));
+  };
+
+  const runConfirm = () => {
+    const action = confirmRequest?.onConfirm;
+    setConfirmRequest(null);
+    action?.();
   };
 
   useEffect(() => {
@@ -146,6 +248,69 @@ export function ManageWindow({
       window.clearTimeout(historyClearTimer.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (!recordingShortcutId) return;
+
+    const handler = (event: KeyboardEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (event.key === "Escape") {
+        setRecordingShortcutId(null);
+        return;
+      }
+
+      const keys = formatKeyboardShortcut(event);
+      if (!keys) return;
+
+      updateShortcut(recordingShortcutId, keys);
+      setRecordingShortcutId(null);
+    };
+
+    window.addEventListener("keydown", handler, true);
+    return () => window.removeEventListener("keydown", handler, true);
+  }, [recordingShortcutId, shortcuts]);
+
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+
+      if (confirmRequest) {
+        event.preventDefault();
+        setConfirmRequest(null);
+        return;
+      }
+      if (templateMenu) {
+        event.preventDefault();
+        setTemplateMenu(null);
+        return;
+      }
+      if (activeHistoryId) {
+        event.preventDefault();
+        setActiveHistoryId(null);
+      }
+    };
+
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [activeHistoryId, confirmRequest, templateMenu]);
+
+  useEffect(() => {
+    if (!templateMenu) return;
+
+    const closeMenu = () => setTemplateMenu(null);
+    window.addEventListener("pointerdown", closeMenu);
+    window.addEventListener("blur", closeMenu);
+    return () => {
+      window.removeEventListener("pointerdown", closeMenu);
+      window.removeEventListener("blur", closeMenu);
+    };
+  }, [templateMenu]);
+
+  useEffect(() => {
+    if (activeHistoryId && !activeHistory) setActiveHistoryId(null);
+  }, [activeHistory, activeHistoryId]);
 
   useLayoutEffect(() => {
     const updateIndicator = () => {
@@ -185,11 +350,20 @@ export function ManageWindow({
               {filteredTemplates.map((template) => (
                 <button
                   key={template.id}
-                  className={`manage-list-item ${template.id === selectedTemplate?.id ? "is-active" : ""}`}
+                  className={`manage-list-item ${template.id === selectedTemplate?.id ? "is-active" : ""} ${template.isFavorite ? "is-pinned" : ""}`}
                   onClick={() => setSelectedTemplateId(template.id)}
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setTemplateMenu({
+                      templateId: template.id,
+                      x: Math.min(event.clientX, window.innerWidth - 190),
+                      y: Math.min(event.clientY, window.innerHeight - 110)
+                    });
+                  }}
                 >
                   <span className="list-title">
-                    {template.isFavorite ? <Star size={14} fill="currentColor" /> : null}
+                    {template.isFavorite ? <span className="pin-glyph" aria-label="置顶">📌</span> : null}
                     {template.title}
                   </span>
                   <span>{template.description}</span>
@@ -204,13 +378,21 @@ export function ManageWindow({
                 <div className="detail-heading">
                   <div>
                     <p className="eyebrow">固定模板</p>
-                    <h2>{selectedTemplate.title}</h2>
+                    <h2>
+                      {selectedTemplate.isFavorite ? <span className="pin-glyph" aria-label="置顶">📌</span> : null}
+                      {selectedTemplate.title}
+                    </h2>
                   </div>
                   <div className="action-row">
-                    <button className="icon-button" type="button" onClick={() => updateSelectedTemplate({ isFavorite: !selectedTemplate.isFavorite })} title="收藏">
-                      <Star size={17} fill={selectedTemplate.isFavorite ? "currentColor" : "none"} />
+                    <button
+                      className={`icon-button ${selectedTemplate.isFavorite ? "is-pinned" : ""}`}
+                      type="button"
+                      onClick={() => updateSelectedTemplate({ isFavorite: !selectedTemplate.isFavorite })}
+                      title={selectedTemplate.isFavorite ? "取消置顶" : "置顶"}
+                    >
+                      <Pin size={17} fill={selectedTemplate.isFavorite ? "currentColor" : "none"} />
                     </button>
-                    <button className="icon-button" type="button" onClick={deleteSelectedTemplate} title="删除模板">
+                    <button className="icon-button" type="button" onClick={() => askDeleteTemplate(selectedTemplate)} title="删除模板">
                       <Trash2 size={17} />
                     </button>
                   </div>
@@ -224,17 +406,13 @@ export function ManageWindow({
                   用途说明
                   <input value={selectedTemplate.description} onChange={(event) => updateSelectedTemplate({ description: event.target.value })} />
                 </label>
-                <label className="field grow">
+                <label className="field grow template-body-field">
                   模板正文
                   <textarea value={selectedTemplate.body} onChange={(event) => updateSelectedTemplate({ body: event.target.value })} />
                 </label>
 
-                <div className="detail-footer">
+                <div className="template-stats">
                   <span>使用 {selectedTemplate.usageCount} 次</span>
-                  <button className="tool-button primary" type="button" onClick={() => onUseTemplate(selectedTemplate)}>
-                    <Copy size={16} />
-                    插入编辑窗口
-                  </button>
                 </div>
               </>
             ) : (
@@ -263,19 +441,30 @@ export function ManageWindow({
               onClick={requestClearHistory}
             >
               <Trash2 size={16} />
-              {historyClearArmed ? "确认清理历史" : "清理历史"}
+              {historyClearArmed ? "确认清理所有历史" : "清理所有历史"}
             </button>
           </div>
           <div className="history-list">
             {history.map((item) => (
-              <button className="history-item" key={item.id} onClick={() => onRestoreHistory(item)}>
-                <span className="history-meta">
-                  已复制
-                  <time>{new Date(item.createdAt).toLocaleString()}</time>
-                </span>
-                <span>{item.body}</span>
-              </button>
+              <div className="history-item" key={item.id}>
+                <button className="history-open" type="button" onClick={() => setActiveHistoryId(item.id)}>
+                  <span className="history-meta">
+                    已复制
+                    <time>{new Date(item.createdAt).toLocaleString()}</time>
+                  </span>
+                  <span>{item.body}</span>
+                </button>
+                <button className="history-delete-button" type="button" onClick={() => askDeleteHistory(item)} title="删除历史">
+                  <Trash2 size={16} />
+                </button>
+              </div>
             ))}
+            {history.length === 0 ? (
+              <div className="empty-state">
+                <strong>还没有历史</strong>
+                <span>执行复制并退出后，这里会保留 prompt 痕迹。</span>
+              </div>
+            ) : null}
           </div>
         </section>
       );
@@ -289,19 +478,34 @@ export function ManageWindow({
               <p className="eyebrow">键盘优先</p>
               <h2>快捷键</h2>
             </div>
-            <button className="tool-button" type="button">
+            <button
+              className="tool-button"
+              type="button"
+              onClick={() => {
+                setRecordingShortcutId(null);
+                onShortcutsChange(defaultShortcuts);
+              }}
+            >
               <Save size={16} />
               恢复默认
             </button>
           </div>
           <div className="shortcut-table">
-            {shortcuts.map((shortcut) => (
-              <div className="shortcut-row" key={shortcut.id}>
-                <span>{shortcut.action}</span>
-                <kbd>{shortcut.keys}</kbd>
-                <small>{shortcut.scope}</small>
-              </div>
-            ))}
+            {shortcuts.map((shortcut) => {
+              const isRecording = recordingShortcutId === shortcut.id;
+              return (
+                <button
+                  className={`shortcut-row ${isRecording ? "is-recording" : ""}`}
+                  key={shortcut.id}
+                  type="button"
+                  onClick={() => setRecordingShortcutId(shortcut.id)}
+                >
+                  <span>{shortcut.action}</span>
+                  <kbd>{isRecording ? "按下新快捷键" : shortcut.keys}</kbd>
+                  <small>{isRecording ? "Esc 取消" : shortcut.scope}</small>
+                </button>
+              );
+            })}
           </div>
         </section>
       );
@@ -448,6 +652,71 @@ export function ManageWindow({
           {renderContent(visibleSection)}
         </div>
       </div>
+
+      {templateMenu && contextTemplate ? (
+        <div
+          className="context-menu"
+          style={{ left: `${templateMenu.x}px`, top: `${templateMenu.y}px` }}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <button type="button" onClick={() => duplicateTemplate(contextTemplate)}>
+            <Copy size={15} />
+            复制
+          </button>
+          <button className="danger" type="button" onClick={() => askDeleteTemplate(contextTemplate)}>
+            <Trash2 size={15} />
+            删除
+          </button>
+        </div>
+      ) : null}
+
+      {activeHistory ? (
+        <div className="modal-layer" role="presentation" onPointerDown={() => setActiveHistoryId(null)}>
+          <section className="history-modal" role="dialog" aria-modal="true" aria-label="历史详情" onPointerDown={(event) => event.stopPropagation()}>
+            <div className="modal-heading">
+              <div>
+                <p className="eyebrow">prompt 历史</p>
+                <h2>{new Date(activeHistory.createdAt).toLocaleString()}</h2>
+              </div>
+              <button className="icon-button" type="button" onClick={() => setActiveHistoryId(null)} title="关闭">
+                <X size={17} />
+              </button>
+            </div>
+            <pre className="prompt-preview">{activeHistory.body}</pre>
+            <div className="modal-actions">
+              <button className="tool-button" type="button" onClick={() => saveHistoryAsTemplate(activeHistory)}>
+                <Save size={16} />
+                保存为模板
+              </button>
+              <button className="tool-button" type="button" onClick={() => void copyText(activeHistory.body)}>
+                <Copy size={16} />
+                复制
+              </button>
+              <button className="tool-button danger" type="button" onClick={() => askDeleteHistory(activeHistory)}>
+                <Trash2 size={16} />
+                删除
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {confirmRequest ? (
+        <div className="modal-layer is-top" role="presentation" onPointerDown={() => setConfirmRequest(null)}>
+          <section className="confirm-dialog" role="alertdialog" aria-modal="true" aria-label={confirmRequest.title} onPointerDown={(event) => event.stopPropagation()}>
+            <h2>{confirmRequest.title}</h2>
+            <p>{confirmRequest.message}</p>
+            <div className="confirm-actions">
+              <button className="tool-button" type="button" onClick={() => setConfirmRequest(null)}>
+                取消
+              </button>
+              <button className="tool-button danger" type="button" onClick={runConfirm}>
+                {confirmRequest.confirmLabel}
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </main>
   );
 }

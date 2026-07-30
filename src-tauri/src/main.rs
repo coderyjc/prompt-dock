@@ -3,9 +3,16 @@
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Manager, WindowEvent,
+    AppHandle, Manager, State, WindowEvent,
 };
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
+use std::{str::FromStr, sync::Mutex};
+
+struct ToggleShortcutState(Mutex<Shortcut>);
+
+fn default_toggle_shortcut() -> Shortcut {
+    Shortcut::new(Some(Modifiers::CONTROL), Code::KeyL)
+}
 
 #[tauri::command]
 fn copy_prompt(text: String) -> Result<(), String> {
@@ -42,6 +49,35 @@ fn hide_manage_window(app: AppHandle) -> Result<(), String> {
         .get_webview_window("manage")
         .ok_or_else(|| "manage window not found".to_string())?;
     window.hide().map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn set_global_toggle_shortcut(
+    app: AppHandle,
+    state: State<ToggleShortcutState>,
+    keys: String,
+) -> Result<(), String> {
+    let normalized_keys = keys.replace("Win", "Super");
+    let next = Shortcut::from_str(&normalized_keys).map_err(|error| error.to_string())?;
+    let mut current = state
+        .0
+        .lock()
+        .map_err(|_| "shortcut state is unavailable".to_string())?;
+
+    if *current == next {
+        return Ok(());
+    }
+
+    let previous = *current;
+    let _ = app.global_shortcut().unregister(previous);
+
+    if let Err(error) = app.global_shortcut().register(next) {
+        let _ = app.global_shortcut().register(previous);
+        return Err(error.to_string());
+    }
+
+    *current = next;
+    Ok(())
 }
 
 fn show_window(app: &AppHandle, label: &str) -> Result<(), String> {
@@ -127,14 +163,21 @@ fn build_tray(app: &tauri::App) -> tauri::Result<()> {
 
 fn main() {
     tauri::Builder::default()
+        .manage(ToggleShortcutState(Mutex::new(default_toggle_shortcut())))
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             let _ = show_window(app, "manage");
         }))
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(|app, shortcut, event| {
-                    let toggle_shortcut = Shortcut::new(Some(Modifiers::CONTROL), Code::KeyL);
-                    if shortcut == &toggle_shortcut && event.state() == ShortcutState::Pressed {
+                    let is_toggle = app
+                        .state::<ToggleShortcutState>()
+                        .0
+                        .lock()
+                        .map(|registered| *shortcut == *registered)
+                        .unwrap_or(false);
+
+                    if is_toggle && event.state() == ShortcutState::Pressed {
                         let _ = toggle_edit_window(app);
                     }
                 })
@@ -142,8 +185,7 @@ fn main() {
         )
         .setup(|app| {
             build_tray(app)?;
-            let shortcut = Shortcut::new(Some(Modifiers::CONTROL), Code::KeyL);
-            app.global_shortcut().register(shortcut)?;
+            app.global_shortcut().register(default_toggle_shortcut())?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -152,7 +194,8 @@ fn main() {
             open_manage_window,
             open_edit_window,
             hide_manage_window,
-            hide_edit_window
+            hide_edit_window,
+            set_global_toggle_shortcut
         ])
         .on_window_event(|window, event| {
             if window.label() == "manage" {

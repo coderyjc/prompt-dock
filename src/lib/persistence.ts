@@ -45,5 +45,6 @@ export const storageKeys = {
   draft: "prompt-dock:draft",
   templates: "prompt-dock:templates",
   history: "prompt-dock:history",
+  shortcuts: "prompt-dock:shortcuts",
   settings: "prompt-dock:settings"
 };

@@ -152,10 +152,33 @@ kbd {
     opacity var(--motion-mid) var(--ease-standard),
     transform var(--motion-mid) var(--ease-standard),
     color var(--motion-mid) var(--ease-standard);
+  scrollbar-color: color-mix(in srgb, var(--accent) 55%, var(--muted)) transparent;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
 }
 
 .editor-frame textarea::placeholder {
   color: var(--faint);
+}
+
+.editor-frame textarea::-webkit-scrollbar {
+  width: 0.72rem;
+}
+
+.editor-frame textarea::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.editor-frame textarea::-webkit-scrollbar-thumb {
+  border: 0.22rem solid transparent;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 55%, var(--muted));
+  background-clip: content-box;
+}
+
+.editor-frame textarea::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-strong);
+  background-clip: content-box;
 }
 
 .edit-drag-handle {
@@ -304,6 +327,12 @@ kbd {
   color: white;
 }
 
+.icon-button.is-pinned {
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
 .tool-button.danger {
   border-color: color-mix(in srgb, var(--danger) 40%, transparent);
   background: color-mix(in srgb, var(--danger) 12%, var(--surface-solid));
@@ -449,6 +478,12 @@ textarea:focus-visible {
     box-shadow var(--motion-fast) var(--ease-standard);
 }
 
+.history-open,
+.history-delete-button,
+.context-menu button {
+  font: inherit;
+}
+
 .palette-layer.is-entering .template-option {
   animation: list-item-in 210ms var(--ease-enter) both;
 }
@@ -485,6 +520,10 @@ textarea:focus-visible {
   box-shadow: 0 10px 30px rgba(22, 31, 29, 0.06);
 }
 
+.manage-list-item.is-pinned {
+  border-color: color-mix(in srgb, var(--accent) 32%, var(--line));
+}
+
 .option-title,
 .list-title {
   display: inline-flex;
@@ -492,6 +531,12 @@ textarea:focus-visible {
   gap: 0.35rem;
   font-weight: 680;
   min-width: 0;
+}
+
+.pin-glyph {
+  flex: 0 0 auto;
+  font-size: 0.86rem;
+  line-height: 1;
 }
 
 .option-description,
@@ -530,6 +575,43 @@ textarea:focus-visible {
   background: transparent;
   color: var(--accent-strong);
   cursor: pointer;
+}
+
+.context-menu {
+  position: fixed;
+  z-index: 40;
+  display: grid;
+  min-width: 10.5rem;
+  gap: 0.18rem;
+  padding: 0.32rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(24px) saturate(150%);
+  animation: context-menu-in 130ms var(--ease-enter) both;
+}
+
+.context-menu button {
+  display: flex;
+  align-items: center;
+  gap: 0.52rem;
+  min-height: 2rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  padding: 0 0.62rem;
+  text-align: left;
+}
+
+.context-menu button:hover {
+  background: var(--accent-soft);
+}
+
+.context-menu button.danger {
+  color: var(--danger);
 }
 
 .manage-shell {
@@ -799,6 +881,9 @@ textarea:focus-visible {
 }
 
 .detail-heading h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
   margin: 0;
   font-size: 1.35rem;
   line-height: 1.2;
@@ -842,6 +927,12 @@ textarea:focus-visible {
   flex: 1;
 }
 
+.template-body-field {
+  gap: 0.58rem;
+  margin-bottom: 0.45rem;
+}
+
+.template-stats,
 .detail-footer {
   display: flex;
   align-items: center;
@@ -853,18 +944,61 @@ textarea:focus-visible {
 
 .history-item {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
   gap: 0.45rem;
   padding: 0.8rem;
   border-color: var(--line);
   background: var(--surface-solid);
 }
 
-.history-item > span:last-child {
+.history-open {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+
+.history-open > span:last-child {
   display: -webkit-box;
   overflow: hidden;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   color: var(--text);
+}
+
+.history-delete-button {
+  align-self: center;
+  display: inline-flex;
+  width: 2.1rem;
+  height: 2.1rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition:
+    background var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard);
+}
+
+.history-delete-button:hover {
+  border-color: color-mix(in srgb, var(--danger) 28%, transparent);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  color: var(--danger);
+}
+
+.history-delete-button:active {
+  transform: scale(0.96);
 }
 
 .history-meta {
@@ -894,6 +1028,19 @@ textarea:focus-visible {
     border-color var(--motion-mid) var(--ease-standard),
     background var(--motion-mid) var(--ease-standard),
     box-shadow var(--motion-mid) var(--ease-standard);
+}
+
+.shortcut-row {
+  width: 100%;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.shortcut-row.is-recording {
+  border-color: color-mix(in srgb, var(--accent) 44%, var(--line));
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 4px var(--accent-soft);
 }
 
 .shortcut-row:hover,
@@ -1014,6 +1161,92 @@ textarea:focus-visible {
   font-size: 0.86rem;
 }
 
+.modal-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 32;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(10, 16, 14, 0.24);
+  backdrop-filter: blur(4px);
+  animation: modal-scrim-in var(--motion-mid) var(--ease-standard) both;
+}
+
+.modal-layer.is-top {
+  z-index: 48;
+}
+
+.history-modal,
+.confirm-dialog {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(30px) saturate(150%);
+  animation: modal-in 220ms var(--ease-enter) both;
+}
+
+.history-modal {
+  display: grid;
+  gap: 1rem;
+  width: min(760px, calc(100vw - 3rem));
+  max-height: min(680px, calc(100vh - 3rem));
+  padding: 1rem;
+}
+
+.modal-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.modal-heading h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.prompt-preview {
+  min-height: 12rem;
+  max-height: min(440px, 54vh);
+  overflow: auto;
+  margin: 0;
+  padding: 0.95rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-solid);
+  color: var(--text);
+  font-family: "Cascadia Mono", Consolas, monospace;
+  line-height: 1.66;
+  white-space: pre-wrap;
+}
+
+.modal-actions,
+.confirm-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.55rem;
+}
+
+.confirm-dialog {
+  display: grid;
+  gap: 0.7rem;
+  width: min(420px, calc(100vw - 3rem));
+  padding: 1rem;
+}
+
+.confirm-dialog h2,
+.confirm-dialog p {
+  margin: 0;
+}
+
+.confirm-dialog p {
+  color: var(--muted);
+}
+
 .empty-state {
   display: grid;
   place-items: center;
@@ -1035,6 +1268,41 @@ textarea:focus-visible {
   to {
     opacity: 1;
     backdrop-filter: blur(2px);
+  }
+}
+
+@keyframes context-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes modal-scrim-in {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(4px);
+  }
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.975);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
   }
 }
 
