@@ -42,6 +42,7 @@ export type ShortcutItem = {
 };
 
 export type OutputMode = "clipboardPaste" | "directInput" | "copyOnly";
+export type EditorBackgroundFit = "center" | "cover";
 
 export type SettingsState = {
   outputMode: OutputMode;
@@ -56,5 +57,14 @@ export type SettingsState = {
   editOpacity: number;
   editWindowWidth: number;
   editWindowHeight: number;
+  editorLineNumbers: boolean;
+  editorCurrentLineHighlight: boolean;
   windowPlacement: "center" | "cursor" | "last";
+  editorBackgroundImageId: string;
+  editorBackgroundImage: string;
+  editorBackgroundImagePath: string;
+  editorBackgroundFit: EditorBackgroundFit;
+  editorBackgroundScale: number;
+  editorBackgroundX: number;
+  editorBackgroundY: number;
 };

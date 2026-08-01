@@ -8,6 +8,8 @@ import {
   Download,
   ExternalLink,
   FileText,
+  FolderOpen,
+  Image as ImageIcon,
   Info,
   Palette,
   Pin,
@@ -19,10 +21,20 @@ import {
   Upload,
   X
 } from "lucide-react";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent
+} from "react";
 import { defaultShortcuts } from "../data/defaults";
 import { visualThemeSeries } from "../data/themeCatalog";
 import { copyText, openExternalUrl, startWindowDrag } from "../lib/desktop";
+import { deleteEditorBackgroundImage, loadEditorBackgroundImageUrl, saveEditorBackgroundImage } from "../lib/editorBackgroundStore";
 import { formatKeyboardShortcut } from "../lib/shortcuts";
 import { storageKeys } from "../lib/persistence";
 import type { HistoryItem, PromptStatItem, SettingsState, ShortcutItem, StashItem, TemplateItem } from "../types";
@@ -49,6 +61,16 @@ type HeatTooltipState = {
   x: number;
   y: number;
 };
+
+type BackgroundImageView = Pick<
+  SettingsState,
+  | "editorBackgroundImageId"
+  | "editorBackgroundImagePath"
+  | "editorBackgroundFit"
+  | "editorBackgroundScale"
+  | "editorBackgroundX"
+  | "editorBackgroundY"
+>;
 
 type ManageWindowProps = {
   draft: string;
@@ -79,6 +101,8 @@ const navItems: Array<{ id: Section; label: string; icon: typeof FileText }> = [
 
 const appIconUrl = new URL("../../src-tauri/icons/icon.png", import.meta.url).href;
 const githubUrl = "https://github.com/coderyjc/prompt-dock";
+const historyPageSize = 20;
+const historyModalCloseMs = 240;
 
 const isSection = (value: string | null): value is Section => {
   return navItems.some((item) => item.id === value);
@@ -108,6 +132,20 @@ const formatDateLabel = (dateKey: string) => {
   const [year, month, day] = dateKey.split("-").map(Number);
   return `${year}年${month}月${day}日`;
 };
+
+const makeBackgroundStyle = (value: BackgroundImageView) =>
+  ({
+    "--editor-background-scale": `${value.editorBackgroundScale / 100}`,
+    "--editor-background-width": `${value.editorBackgroundScale}%`,
+    "--editor-background-x": `${value.editorBackgroundX}%`,
+    "--editor-background-y": `${value.editorBackgroundY}%`
+  }) as CSSProperties;
+
+const makeBackgroundPreviewStyle = (settings: SettingsState) =>
+  ({
+    ...makeBackgroundStyle(settings),
+    aspectRatio: `${settings.editWindowWidth} / ${settings.editWindowHeight}`
+  }) as CSSProperties;
 
 const buildStatsModel = (promptStats: PromptStatItem[], templates: TemplateItem[]) => {
   const sortedStats = [...promptStats].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
@@ -200,22 +238,40 @@ export function ManageWindow({
   const [templateMenu, setTemplateMenu] = useState<TemplateMenuState | null>(null);
   const [historyClearArmed, setHistoryClearArmed] = useState(false);
   const [activeHistoryId, setActiveHistoryId] = useState<string | null>(null);
+  const [historyKeyword, setHistoryKeyword] = useState("");
+  const [historyDateFilter, setHistoryDateFilter] = useState("");
+  const [historyVisibleCount, setHistoryVisibleCount] = useState(historyPageSize);
+  const [historyModalPhase, setHistoryModalPhase] = useState<"open" | "closing">("open");
   const [confirmRequest, setConfirmRequest] = useState<ConfirmRequest | null>(null);
   const [recordingShortcutId, setRecordingShortcutId] = useState<string | null>(null);
   const [heatTooltip, setHeatTooltip] = useState<HeatTooltipState | null>(null);
   const [expandedStashIds, setExpandedStashIds] = useState<Set<string>>(() => new Set());
+  const [backgroundPreviewUrl, setBackgroundPreviewUrl] = useState("");
   const [navIndicator, setNavIndicator] = useState({ top: 0, height: 0 });
   const navRef = useRef<HTMLElement | null>(null);
+  const backgroundFileInputRef = useRef<HTMLInputElement | null>(null);
   const navButtonRefs = useRef<Partial<Record<Section, HTMLButtonElement>>>({});
   const switchTimer = useRef<number | undefined>(undefined);
   const settleTimer = useRef<number | undefined>(undefined);
   const historyClearTimer = useRef<number | undefined>(undefined);
+  const historyModalCloseTimer = useRef<number | undefined>(undefined);
 
   const sortedTemplates = useMemo(() => sortTemplates(templates), [templates]);
   const statsModel = useMemo(() => buildStatsModel(promptStats, templates), [promptStats, templates]);
   const selectedTemplate = templates.find((template) => template.id === selectedTemplateId) ?? sortedTemplates[0];
   const activeHistory = history.find((item) => item.id === activeHistoryId) ?? null;
   const contextTemplate = templateMenu ? templates.find((template) => template.id === templateMenu.templateId) : null;
+  const filteredHistory = useMemo(() => {
+    const keyword = historyKeyword.trim().toLowerCase();
+    return history.filter((item) => {
+      const matchesKeyword = !keyword || item.body.toLowerCase().includes(keyword);
+      const matchesDate = !historyDateFilter || toDateKey(item.createdAt) === historyDateFilter;
+      return matchesKeyword && matchesDate;
+    });
+  }, [history, historyDateFilter, historyKeyword]);
+  const visibleHistory = useMemo(() => filteredHistory.slice(0, historyVisibleCount), [filteredHistory, historyVisibleCount]);
+  const hasMoreHistory = visibleHistory.length < filteredHistory.length;
+  const hasHistoryFilters = Boolean(historyKeyword.trim() || historyDateFilter);
 
   const filteredTemplates = useMemo(() => {
     const text = query.trim().toLowerCase();
@@ -326,6 +382,28 @@ export function ManageWindow({
     historyClearTimer.current = window.setTimeout(() => setHistoryClearArmed(false), 3200);
   };
 
+  const openHistoryModal = (itemId: string) => {
+    window.clearTimeout(historyModalCloseTimer.current);
+    setHistoryModalPhase("open");
+    setActiveHistoryId(itemId);
+  };
+
+  const closeHistoryModal = () => {
+    if (!activeHistoryId || historyModalPhase === "closing") return;
+
+    setHistoryModalPhase("closing");
+    window.clearTimeout(historyModalCloseTimer.current);
+    historyModalCloseTimer.current = window.setTimeout(() => {
+      setActiveHistoryId(null);
+      setHistoryModalPhase("open");
+    }, historyModalCloseMs);
+  };
+
+  const resetHistoryFilters = () => {
+    setHistoryKeyword("");
+    setHistoryDateFilter("");
+  };
+
   const saveHistoryAsTemplate = (item: HistoryItem) => {
     const id = makeTemplateId();
     const next: TemplateItem = {
@@ -379,13 +457,95 @@ export function ManageWindow({
     });
   };
 
+  const handleBackgroundFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = "";
+    if (!file) return;
+
+    try {
+      const savedImage = await saveEditorBackgroundImage(file);
+      if (settings.editorBackgroundImageId && settings.editorBackgroundImageId !== savedImage.id) {
+        void deleteEditorBackgroundImage(settings.editorBackgroundImageId);
+      }
+
+      onSettingsChange({
+        ...settings,
+        editorBackgroundImage: "",
+        editorBackgroundImageId: savedImage.id,
+        editorBackgroundImagePath: savedImage.name,
+        editorBackgroundFit: "cover",
+        editorBackgroundScale: 100,
+        editorBackgroundX: 50,
+        editorBackgroundY: 50
+      });
+    } catch {
+      return;
+    }
+  };
+
+  const updateBackgroundSettings = (patch: Partial<SettingsState>) => {
+    onSettingsChange({
+      ...settings,
+      ...patch,
+      editorBackgroundImage: ""
+    });
+  };
+
+  const removeBackgroundImage = () => {
+    if (settings.editorBackgroundImageId) {
+      void deleteEditorBackgroundImage(settings.editorBackgroundImageId);
+    }
+
+    onSettingsChange({
+      ...settings,
+      editorBackgroundImageId: "",
+      editorBackgroundImage: "",
+      editorBackgroundImagePath: "",
+      editorBackgroundFit: "cover",
+      editorBackgroundScale: 100,
+      editorBackgroundX: 50,
+      editorBackgroundY: 50
+    });
+  };
+
   useEffect(() => {
     return () => {
       window.clearTimeout(switchTimer.current);
       window.clearTimeout(settleTimer.current);
       window.clearTimeout(historyClearTimer.current);
+      window.clearTimeout(historyModalCloseTimer.current);
     };
   }, []);
+
+  useEffect(() => {
+    setHistoryVisibleCount(historyPageSize);
+  }, [historyDateFilter, historyKeyword]);
+
+  useEffect(() => {
+    let active = true;
+    let objectUrl = "";
+
+    setBackgroundPreviewUrl("");
+
+    if (!settings.editorBackgroundImageId) {
+      return () => undefined;
+    }
+
+    void loadEditorBackgroundImageUrl(settings.editorBackgroundImageId).then((url) => {
+      if (!active) {
+        if (url) URL.revokeObjectURL(url);
+        return;
+      }
+
+      objectUrl = url;
+      setBackgroundPreviewUrl(url);
+    });
+
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [settings.editorBackgroundImageId]);
 
   useEffect(() => {
     if (!recordingShortcutId) return;
@@ -448,7 +608,7 @@ export function ManageWindow({
       }
       if (activeHistoryId) {
         event.preventDefault();
-        setActiveHistoryId(null);
+        closeHistoryModal();
       }
     };
 
@@ -699,10 +859,32 @@ export function ManageWindow({
               {historyClearArmed ? "确认清理所有历史" : "清理所有历史"}
             </button>
           </div>
+          <div className="history-filter-row">
+            <label className="search-box history-search-box">
+              <Search size={16} />
+              <input
+                value={historyKeyword}
+                onChange={(event) => setHistoryKeyword(event.target.value)}
+                placeholder="搜索历史关键词"
+              />
+            </label>
+            <label className="history-date-filter">
+              <span>日期</span>
+              <input type="date" value={historyDateFilter} onChange={(event) => setHistoryDateFilter(event.target.value)} />
+            </label>
+            <span className="history-result-count">
+              {filteredHistory.length}/{history.length}
+            </span>
+            {hasHistoryFilters ? (
+              <button className="tool-button history-filter-reset" type="button" onClick={resetHistoryFilters}>
+                清空
+              </button>
+            ) : null}
+          </div>
           <div className="history-list">
-            {history.map((item) => (
+            {visibleHistory.map((item) => (
               <div className="history-item" key={item.id}>
-                <button className="history-open" type="button" onClick={() => setActiveHistoryId(item.id)}>
+                <button className="history-open" type="button" onClick={() => openHistoryModal(item.id)}>
                   <span className="history-meta">
                     已复制
                     <time>{new Date(item.createdAt).toLocaleString()}</time>
@@ -714,10 +896,28 @@ export function ManageWindow({
                 </button>
               </div>
             ))}
+            {hasMoreHistory ? (
+              <div className="history-list-footer">
+                <button
+                  className="tool-button history-load-more"
+                  type="button"
+                  onClick={() => setHistoryVisibleCount((count) => count + historyPageSize)}
+                >
+                  加载更多
+                  <span>{Math.min(historyPageSize, filteredHistory.length - visibleHistory.length)} 条</span>
+                </button>
+              </div>
+            ) : null}
             {history.length === 0 ? (
               <div className="empty-state">
                 <strong>还没有历史</strong>
                 <span>执行复制并退出后，这里会保留 prompt 痕迹。</span>
+              </div>
+            ) : null}
+            {history.length > 0 && filteredHistory.length === 0 ? (
+              <div className="empty-state">
+                <strong>没有匹配的历史</strong>
+                <span>换一个关键词或日期再试。</span>
               </div>
             ) : null}
           </div>
@@ -875,13 +1075,7 @@ export function ManageWindow({
                   <span>本地数据与启动项。</span>
                 </div>
               </div>
-              <div className="data-grid">
-                <ActionTile icon={Archive} title="本地数据库" body="%APPDATA%/PromptDock/prompt-dock.sqlite" />
-                <ActionTile icon={Download} title="导出数据" body="导出模板、设置和历史备份。" />
-                <ActionTile icon={Upload} title="恢复备份" body="从 JSON 备份恢复本地数据。" />
-                <Toggle label="开机自启动" value={settings.launchAtStartup} onChange={(value) => onSettingsChange({ ...settings, launchAtStartup: value })} />
-              </div>
-              <div className="setting-stack">
+              <div className="setting-stack data-setting-stack">
                 <NumberSetting
                   label="历史记录保留数"
                   value={settings.historyLimit}
@@ -890,6 +1084,18 @@ export function ManageWindow({
                   unit="条"
                   onChange={(value) => onSettingsChange({ ...settings, historyLimit: value })}
                 />
+                <div className="data-grid">
+                  <ActionTile icon={Archive} title="本地数据库" body="%APPDATA%/PromptDock/prompt-dock.sqlite" />
+                  <ActionTile icon={Download} title="导出数据" body="导出模板、设置和历史备份。" />
+                  <ActionTile icon={Upload} title="恢复备份" body="从 JSON 备份恢复本地数据。" />
+                  <CompactToggleTile
+                    icon={Settings}
+                    title="开机自启动"
+                    body="启动系统时自动唤起 Prompt Dock。"
+                    value={settings.launchAtStartup}
+                    onChange={(value) => onSettingsChange({ ...settings, launchAtStartup: value })}
+                  />
+                </div>
               </div>
             </section>
           </div>
@@ -899,7 +1105,7 @@ export function ManageWindow({
 
     if (currentSection === "appearance") {
       return (
-        <section className="single-panel">
+        <section className="single-panel appearance-panel">
           <div className="detail-heading">
             <div>
               <p className="eyebrow">主题系列</p>
@@ -907,7 +1113,6 @@ export function ManageWindow({
             </div>
           </div>
           <div className="setting-stack">
-            <ThemeSeriesPicker value={settings.visualTheme} onChange={(value) => onSettingsChange({ ...settings, visualTheme: value })} />
             <Segmented
               label="窗口位置"
               value={settings.windowPlacement}
@@ -918,31 +1123,60 @@ export function ManageWindow({
               ]}
               onChange={(value) => onSettingsChange({ ...settings, windowPlacement: value as SettingsState["windowPlacement"] })}
             />
-            <SliderSetting
-              label="编辑框透明度"
-              value={settings.editOpacity}
-              min={35}
-              max={100}
-              step={5}
-              unit="%"
-              onChange={(value) => onSettingsChange({ ...settings, editOpacity: value })}
+            <div className="setting-row editor-measure-row" role="group" aria-label="编辑框尺寸与透明度">
+              <CompactNumberSetting
+                label="宽度"
+                value={settings.editWindowWidth}
+                min={520}
+                max={1600}
+                unit="px"
+                onChange={(value) => onSettingsChange({ ...settings, editWindowWidth: value })}
+              />
+              <CompactNumberSetting
+                label="高度"
+                value={settings.editWindowHeight}
+                min={360}
+                max={1000}
+                unit="px"
+                onChange={(value) => onSettingsChange({ ...settings, editWindowHeight: value })}
+              />
+              <CompactSliderSetting
+                label="透明度"
+                value={settings.editOpacity}
+                min={35}
+                max={100}
+                step={5}
+                unit="%"
+                onChange={(value) => onSettingsChange({ ...settings, editOpacity: value })}
+              />
+            </div>
+            <Toggle label="显示行号" value={settings.editorLineNumbers} onChange={(value) => onSettingsChange({ ...settings, editorLineNumbers: value })} />
+            <Toggle
+              label="高亮当前行"
+              value={settings.editorCurrentLineHighlight}
+              onChange={(value) => onSettingsChange({ ...settings, editorCurrentLineHighlight: value })}
             />
-            <NumberSetting
-              label="编辑框宽度"
-              value={settings.editWindowWidth}
-              min={520}
-              max={1600}
-              unit="px"
-              onChange={(value) => onSettingsChange({ ...settings, editWindowWidth: value })}
+            <input
+              ref={backgroundFileInputRef}
+              className="background-file-input"
+              type="file"
+              accept="image/png,image/jpeg,image/jpg,image/webp,image/gif,image/bmp,image/svg+xml"
+              onChange={(event) => void handleBackgroundFileChange(event)}
             />
-            <NumberSetting
-              label="编辑框高度"
-              value={settings.editWindowHeight}
-              min={360}
-              max={1000}
-              unit="px"
-              onChange={(value) => onSettingsChange({ ...settings, editWindowHeight: value })}
+            <BackgroundImageSetting
+              imagePath={settings.editorBackgroundImagePath}
+              hasImage={Boolean(settings.editorBackgroundImageId)}
+              onBrowse={() => backgroundFileInputRef.current?.click()}
             />
+            {settings.editorBackgroundImageId ? (
+              <BackgroundImageControls
+                settings={settings}
+                previewUrl={backgroundPreviewUrl}
+                onChange={updateBackgroundSettings}
+                onRemove={removeBackgroundImage}
+              />
+            ) : null}
+            <ThemeSeriesPicker value={settings.visualTheme} onChange={(value) => onSettingsChange({ ...settings, visualTheme: value })} />
           </div>
         </section>
       );
@@ -1049,14 +1283,14 @@ export function ManageWindow({
       ) : null}
 
       {activeHistory ? (
-        <div className="modal-layer" role="presentation" onPointerDown={() => setActiveHistoryId(null)}>
+        <div className={`modal-layer ${historyModalPhase === "closing" ? "is-closing" : ""}`} role="presentation" onPointerDown={closeHistoryModal}>
           <section className="history-modal" role="dialog" aria-modal="true" aria-label="历史详情" onPointerDown={(event) => event.stopPropagation()}>
             <div className="modal-heading">
               <div>
                 <p className="eyebrow">prompt 历史</p>
                 <h2>{new Date(activeHistory.createdAt).toLocaleString()}</h2>
               </div>
-              <button className="icon-button" type="button" onClick={() => setActiveHistoryId(null)} title="关闭">
+              <button className="icon-button" type="button" onClick={closeHistoryModal} title="关闭">
                 <X size={17} />
               </button>
             </div>
@@ -1149,6 +1383,111 @@ function ThemeSeriesPicker({ value, onChange }: { value: string; onChange: (valu
         </section>
       ))}
     </div>
+  );
+}
+
+function BackgroundImageSetting({
+  imagePath,
+  hasImage,
+  onBrowse
+}: {
+  imagePath: string;
+  hasImage: boolean;
+  onBrowse: () => void;
+}) {
+  const displayPath = hasImage ? imagePath || "自定义背景图" : "图片地址";
+
+  return (
+    <div className="background-setting-row">
+      <button className={`background-address-button ${hasImage ? "" : "is-empty"}`} type="button" onClick={onBrowse} title={displayPath}>
+        <ImageIcon size={16} />
+        <span>{displayPath}</span>
+      </button>
+      <button className="tool-button" type="button" onClick={onBrowse}>
+        <FolderOpen size={16} />
+        浏览
+      </button>
+    </div>
+  );
+}
+
+function BackgroundImageControls({
+  settings,
+  previewUrl,
+  onChange,
+  onRemove
+}: {
+  settings: SettingsState;
+  previewUrl: string;
+  onChange: (patch: Partial<SettingsState>) => void;
+  onRemove: () => void;
+}) {
+  return (
+    <section className="background-inline-panel">
+      <div className="background-inline-preview" style={makeBackgroundPreviewStyle(settings)}>
+        {previewUrl ? (
+          <div className="edit-background-layer background-preview-layer" aria-hidden="true">
+            <img
+              className={`edit-background-image is-${settings.editorBackgroundFit}`}
+              src={previewUrl}
+              alt=""
+              draggable={false}
+            />
+            <div className="edit-background-overlay" />
+          </div>
+        ) : (
+          <div className="background-preview-empty">
+            <ImageIcon size={20} />
+            <span>读取背景图</span>
+          </div>
+        )}
+      </div>
+      <div className="background-inline-controls">
+        <Segmented
+          label="展开模式"
+          value={settings.editorBackgroundFit}
+          options={[
+            ["cover", "扩张"],
+            ["center", "居中"]
+          ]}
+          onChange={(value) => onChange({ editorBackgroundFit: value as SettingsState["editorBackgroundFit"] })}
+        />
+        <SliderSetting
+          label="图片大小"
+          value={settings.editorBackgroundScale}
+          min={30}
+          max={220}
+          step={5}
+          unit="%"
+          onChange={(value) => onChange({ editorBackgroundScale: value })}
+        />
+        <SliderSetting
+          label="横向位置"
+          value={settings.editorBackgroundX}
+          min={0}
+          max={100}
+          step={1}
+          unit="%"
+          onChange={(value) => onChange({ editorBackgroundX: value })}
+        />
+        <SliderSetting
+          label="纵向位置"
+          value={settings.editorBackgroundY}
+          min={0}
+          max={100}
+          step={1}
+          unit="%"
+          onChange={(value) => onChange({ editorBackgroundY: value })}
+        />
+        <div className="background-inline-actions">
+          <span>修改会立即应用到编辑器窗口。</span>
+          <button className="tool-button danger" type="button" onClick={onRemove}>
+            <Trash2 size={16} />
+            移除背景
+          </button>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -1264,12 +1603,128 @@ function NumberSetting({
   );
 }
 
+function CompactNumberSetting({
+  label,
+  value,
+  min,
+  max,
+  unit,
+  onChange
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  unit: string;
+  onChange: (value: number) => void;
+}) {
+  const [draft, setDraft] = useState(String(value));
+
+  useEffect(() => {
+    setDraft(String(value));
+  }, [value]);
+
+  const commit = () => {
+    const parsed = Number(draft);
+    const next = Number.isFinite(parsed) ? Math.min(max, Math.max(min, Math.round(parsed))) : value;
+    setDraft(String(next));
+    if (next !== value) onChange(next);
+  };
+
+  return (
+    <label className="editor-measure-control">
+      <span>{label}</span>
+      <span className="editor-measure-input">
+        <input
+          type="number"
+          min={min}
+          max={max}
+          value={draft}
+          onBlur={commit}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") event.currentTarget.blur();
+          }}
+        />
+        <small>{unit}</small>
+      </span>
+    </label>
+  );
+}
+
+function CompactSliderSetting({
+  label,
+  value,
+  min,
+  max,
+  step,
+  unit,
+  onChange
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  unit: string;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="editor-measure-control">
+      <span>{label}</span>
+      <span className="editor-measure-input">
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(event) => onChange(Number(event.target.value))}
+        />
+        <strong>
+          {value}
+          {unit}
+        </strong>
+      </span>
+    </label>
+  );
+}
+
 function ActionTile({ icon: Icon, title, body }: { icon: typeof Archive; title: string; body: string }) {
   return (
     <button className="action-tile" type="button">
       <Icon size={20} />
-      <strong>{title}</strong>
-      <span>{body}</span>
+      <span className="action-tile-copy">
+        <strong>{title}</strong>
+        <span>{body}</span>
+      </span>
     </button>
+  );
+}
+
+function CompactToggleTile({
+  icon: Icon,
+  title,
+  body,
+  value,
+  onChange
+}: {
+  icon: typeof Archive;
+  title: string;
+  body: string;
+  value: boolean;
+  onChange: (value: boolean) => void;
+}) {
+  return (
+    <div className="action-tile compact-toggle-tile">
+      <Icon size={20} />
+      <span className="action-tile-copy">
+        <strong>{title}</strong>
+        <span>{body}</span>
+      </span>
+      <button className={`toggle ${value ? "is-on" : ""}`} type="button" onClick={() => onChange(!value)} aria-label={title} aria-pressed={value}>
+        <span />
+      </button>
+    </div>
   );
 }

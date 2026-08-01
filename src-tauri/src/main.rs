@@ -2,8 +2,8 @@
 
 use std::{process::Command, str::FromStr, sync::Mutex};
 use tauri::{
-    menu::{Menu, MenuItem},
-    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    menu::{Menu, MenuItem, PredefinedMenuItem},
+    tray::{MouseButton, TrayIconBuilder, TrayIconEvent},
     AppHandle, LogicalSize, Manager, Size, State, WebviewWindow, WindowEvent,
 };
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
@@ -182,16 +182,15 @@ fn toggle_edit_window(app: &AppHandle) -> Result<(), String> {
 fn build_tray(app: &tauri::App) -> tauri::Result<()> {
     let open_edit = MenuItem::with_id(app, "open_edit", "打开编辑窗口", true, None::<&str>)?;
     let open_manage = MenuItem::with_id(app, "open_manage", "打开工作台", true, None::<&str>)?;
-    let pause_shortcuts =
-        MenuItem::with_id(app, "pause_shortcuts", "暂停快捷键", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&open_edit, &open_manage, &pause_shortcuts, &quit])?;
+    let separator = PredefinedMenuItem::separator(app)?;
+    let quit = MenuItem::with_id(app, "quit", "退出 Prompt Dock", true, None::<&str>)?;
+    let menu = Menu::with_items(app, &[&open_edit, &open_manage, &separator, &quit])?;
 
     let mut tray = TrayIconBuilder::new()
         .menu(&menu)
-        .tooltip("Prompt Dock")
+        .tooltip("Prompt Dock - 双击打开编辑窗口")
         .icon_as_template(false)
-        .show_menu_on_left_click(true)
+        .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id().as_ref() {
             "open_edit" => {
                 let _ = show_edit_window(app);
@@ -205,9 +204,8 @@ fn build_tray(app: &tauri::App) -> tauri::Result<()> {
             _ => {}
         })
         .on_tray_icon_event(|tray, event| {
-            if let TrayIconEvent::Click {
+            if let TrayIconEvent::DoubleClick {
                 button: MouseButton::Left,
-                button_state: MouseButtonState::Up,
                 ..
             } = event
             {

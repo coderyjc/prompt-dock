@@ -94,5 +94,14 @@ export const defaultSettings: SettingsState = {
   editOpacity: 100,
   editWindowWidth: 760,
   editWindowHeight: 520,
-  windowPlacement: "center"
+  editorLineNumbers: true,
+  editorCurrentLineHighlight: true,
+  windowPlacement: "center",
+  editorBackgroundImageId: "",
+  editorBackgroundImage: "",
+  editorBackgroundImagePath: "",
+  editorBackgroundFit: "cover",
+  editorBackgroundScale: 100,
+  editorBackgroundX: 50,
+  editorBackgroundY: 50
 };

@@ -1,8 +1,9 @@
 import { Settings, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { ShortcutItem, StashItem, TemplateItem } from "../types";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import type { SettingsState, ShortcutItem, StashItem, TemplateItem } from "../types";
 import { TemplatePalette } from "./TemplatePalette";
 import { startWindowDrag } from "../lib/desktop";
+import { loadEditorBackgroundImageUrl } from "../lib/editorBackgroundStore";
 import { shortcutMatches } from "../lib/shortcuts";
 
 type EditWindowProps = {
@@ -10,6 +11,7 @@ type EditWindowProps = {
   templates: TemplateItem[];
   stashItems: StashItem[];
   shortcuts: ShortcutItem[];
+  settings: SettingsState;
   saveState: "saved" | "saving";
   onDraftChange: (value: string) => void;
   onApplyTemplate: (template: TemplateItem, cursorStart?: number, cursorEnd?: number) => void;
@@ -28,11 +30,14 @@ const estimateTokens = (value: string) => {
   return Math.max(0, Math.ceil(chinese * 0.75 + words * 1.3));
 };
 
+const getLineIndexAtCaret = (value: string, caret: number) => value.slice(0, caret).split("\n").length - 1;
+
 export function EditWindow({
   draft,
   templates,
   stashItems,
   shortcuts,
+  settings,
   saveState,
   onDraftChange,
   onApplyTemplate,
@@ -49,6 +54,8 @@ export function EditWindow({
   const [paletteMode, setPaletteMode] = useState<"root" | "stash">("root");
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [backgroundUrl, setBackgroundUrl] = useState("");
+  const [editorViewport, setEditorViewport] = useState({ scrollTop: 0, currentLineIndex: 0 });
 
   const filteredTemplates = useMemo(() => {
     const text = query.trim().toLowerCase();
@@ -71,6 +78,22 @@ export function EditWindow({
 
   const paletteOptionCount = paletteMode === "stash" ? filteredStashItems.length : filteredTemplates.length + 1;
   const tokenCount = estimateTokens(draft);
+  const hasBackgroundImage = Boolean(backgroundUrl);
+  const editorLines = useMemo(() => draft.split("\n"), [draft]);
+  const showEditorOverlay = settings.editorLineNumbers || settings.editorCurrentLineHighlight;
+  const editorFrameClass = [
+    "editor-frame",
+    settings.editorLineNumbers ? "show-line-numbers" : "",
+    settings.editorCurrentLineHighlight ? "show-current-line" : ""
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const backgroundStyle = {
+    "--editor-background-scale": `${settings.editorBackgroundScale / 100}`,
+    "--editor-background-width": `${settings.editorBackgroundScale}%`,
+    "--editor-background-x": `${settings.editorBackgroundX}%`,
+    "--editor-background-y": `${settings.editorBackgroundY}%`
+  } as CSSProperties;
   const shortcutById = useMemo(() => {
     return new Map(shortcuts.map((shortcut) => [shortcut.id, shortcut.keys]));
   }, [shortcuts]);
@@ -90,9 +113,57 @@ export function EditWindow({
     `- ${escapeShortcut} 关闭窗口并保留内容`
   ].join("\n");
 
+  const syncEditorViewport = useCallback(
+    (editor: HTMLTextAreaElement | null = editorRef.current, value = draft) => {
+      if (!editor) return;
+
+      const nextViewport = {
+        scrollTop: editor.scrollTop,
+        currentLineIndex: getLineIndexAtCaret(value, editor.selectionStart ?? value.length)
+      };
+
+      setEditorViewport((current) =>
+        current.scrollTop === nextViewport.scrollTop && current.currentLineIndex === nextViewport.currentLineIndex
+          ? current
+          : nextViewport
+      );
+    },
+    [draft]
+  );
+
   useEffect(() => {
     editorRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    window.requestAnimationFrame(() => syncEditorViewport(editorRef.current, draft));
+  }, [draft, syncEditorViewport]);
+
+  useEffect(() => {
+    let active = true;
+    let objectUrl = "";
+
+    setBackgroundUrl("");
+
+    if (!settings.editorBackgroundImageId) {
+      return () => undefined;
+    }
+
+    void loadEditorBackgroundImageUrl(settings.editorBackgroundImageId).then((url) => {
+      if (!active) {
+        if (url) URL.revokeObjectURL(url);
+        return;
+      }
+
+      objectUrl = url;
+      setBackgroundUrl(url);
+    });
+
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [settings.editorBackgroundImageId]);
 
   useEffect(() => {
     if (selectedIndex >= paletteOptionCount) {
@@ -216,7 +287,23 @@ export function EditWindow({
   };
 
   return (
-    <main className="edit-shell" aria-label="Prompt Dock 编辑窗口">
+    <main
+      className={`edit-shell ${hasBackgroundImage ? "has-editor-background" : ""}`}
+      style={hasBackgroundImage ? backgroundStyle : undefined}
+      aria-label="Prompt Dock 编辑窗口"
+    >
+      {hasBackgroundImage ? (
+        <div className="edit-background-layer" aria-hidden="true">
+          <img
+            className={`edit-background-image is-${settings.editorBackgroundFit}`}
+            src={backgroundUrl}
+            alt=""
+            draggable={false}
+          />
+          <div className="edit-background-overlay" />
+        </div>
+      ) : null}
+
       <button
         className="edit-drag-handle"
         type="button"
@@ -236,11 +323,37 @@ export function EditWindow({
         </button>
       </div>
 
-      <div className="editor-frame" onPointerDown={(event) => event.stopPropagation()}>
+      <div className={editorFrameClass} onPointerDown={(event) => event.stopPropagation()}>
+        {showEditorOverlay ? (
+          <div className="editor-visual-layer" aria-hidden="true">
+            <div
+              className="editor-visual-scroll"
+              style={{ transform: `translateY(-${editorViewport.scrollTop}px)` }}
+            >
+              {editorLines.map((line, index) => (
+                <div
+                  className={`editor-visual-line ${index === editorViewport.currentLineIndex ? "is-current" : ""}`}
+                  key={`${index}-${editorLines.length}`}
+                >
+                  <span className="editor-line-number">{index + 1}</span>
+                  <span className="editor-line-content">{line || "\u00a0"}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
         <textarea
           ref={editorRef}
           value={draft}
-          onChange={(event) => onDraftChange(event.target.value)}
+          onChange={(event) => {
+            onDraftChange(event.target.value);
+            syncEditorViewport(event.currentTarget, event.target.value);
+          }}
+          onClick={(event) => syncEditorViewport(event.currentTarget)}
+          onFocus={(event) => syncEditorViewport(event.currentTarget)}
+          onKeyUp={(event) => syncEditorViewport(event.currentTarget)}
+          onScroll={(event) => syncEditorViewport(event.currentTarget)}
+          onSelect={(event) => syncEditorViewport(event.currentTarget)}
           spellCheck={false}
           autoFocus
           placeholder={placeholder}

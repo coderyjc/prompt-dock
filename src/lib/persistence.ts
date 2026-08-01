@@ -13,7 +13,11 @@ const readValue = <T,>(key: string, fallback: T): T => {
 
 export const writeValue = <T,>(key: string, value: T) => {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(key, JSON.stringify(value));
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    return;
+  }
 };
 
 export const usePersistentState = <T,>(key: string, fallback: T) => {

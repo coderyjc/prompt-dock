@@ -54,6 +54,7 @@ const cssVariableName = (key: string) => `--${key.replace(/[A-Z]/g, (letter) => 
 
 const mergeSettingsWithDefaults = (items: SettingsState) => {
   const partial = items as Partial<SettingsState>;
+  const editorBackgroundFit = partial.editorBackgroundFit === "center" || partial.editorBackgroundFit === "cover" ? partial.editorBackgroundFit : defaultSettings.editorBackgroundFit;
   return {
     ...defaultSettings,
     ...items,
@@ -61,7 +62,16 @@ const mergeSettingsWithDefaults = (items: SettingsState) => {
     historyLimit: clampNumber(Math.round(partial.historyLimit ?? defaultSettings.historyLimit), 30, 3000, defaultSettings.historyLimit),
     editOpacity: clampNumber(Math.round(partial.editOpacity ?? defaultSettings.editOpacity), 35, 100, defaultSettings.editOpacity),
     editWindowWidth: clampNumber(Math.round(partial.editWindowWidth ?? defaultSettings.editWindowWidth), 520, 1600, defaultSettings.editWindowWidth),
-    editWindowHeight: clampNumber(Math.round(partial.editWindowHeight ?? defaultSettings.editWindowHeight), 360, 1000, defaultSettings.editWindowHeight)
+    editWindowHeight: clampNumber(Math.round(partial.editWindowHeight ?? defaultSettings.editWindowHeight), 360, 1000, defaultSettings.editWindowHeight),
+    editorLineNumbers: typeof partial.editorLineNumbers === "boolean" ? partial.editorLineNumbers : defaultSettings.editorLineNumbers,
+    editorCurrentLineHighlight: typeof partial.editorCurrentLineHighlight === "boolean" ? partial.editorCurrentLineHighlight : defaultSettings.editorCurrentLineHighlight,
+    editorBackgroundImageId: typeof partial.editorBackgroundImageId === "string" ? partial.editorBackgroundImageId : defaultSettings.editorBackgroundImageId,
+    editorBackgroundImage: "",
+    editorBackgroundImagePath: typeof partial.editorBackgroundImagePath === "string" ? partial.editorBackgroundImagePath : defaultSettings.editorBackgroundImagePath,
+    editorBackgroundFit,
+    editorBackgroundScale: clampNumber(Math.round(partial.editorBackgroundScale ?? defaultSettings.editorBackgroundScale), 30, 220, defaultSettings.editorBackgroundScale),
+    editorBackgroundX: clampNumber(Math.round(partial.editorBackgroundX ?? defaultSettings.editorBackgroundX), 0, 100, defaultSettings.editorBackgroundX),
+    editorBackgroundY: clampNumber(Math.round(partial.editorBackgroundY ?? defaultSettings.editorBackgroundY), 0, 100, defaultSettings.editorBackgroundY)
   };
 };
 
@@ -113,6 +123,7 @@ export function App() {
 
   useEffect(() => {
     document.documentElement.style.setProperty("--editor-opacity-percent", `${normalizedSettings.editOpacity}%`);
+    document.documentElement.style.setProperty("--editor-background-tint-percent", `${Math.max(32, Math.round(normalizedSettings.editOpacity * 0.58))}%`);
   }, [normalizedSettings.editOpacity]);
 
   useEffect(() => {
@@ -290,6 +301,7 @@ export function App() {
       templates={templates}
       stashItems={stashItems}
       shortcuts={shortcuts}
+      settings={normalizedSettings}
       saveState={saveState}
       onDraftChange={setDraft}
       onApplyTemplate={applyTemplate}
