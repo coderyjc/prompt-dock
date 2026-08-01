@@ -27,7 +27,7 @@
       },
       {
         "label": "manage",
-        "title": "工作台",
+        "title": "Prompt Dock",
         "url": "index.html?window=manage",
         "width": 1080,
         "height": 720,

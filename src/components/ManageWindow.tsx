@@ -666,13 +666,6 @@ export function ManageWindow({
             </div>
           </div>
 
-          <div className="stats-summary-grid">
-            <MetricCard label="总提示词" value={formatNumber(statsModel.totalPrompts)} caption="包含已删除历史" />
-            <MetricCard label="总字数" value={formatNumber(statsModel.totalChars)} caption="按提交时文本长度统计" />
-            <MetricCard label="平均字数" value={formatNumber(statsModel.averageChars)} caption="每条 prompt 平均长度" />
-            <MetricCard label="连续写作" value={`${statsModel.currentStreak} 天`} caption="从今天向前连续统计" />
-          </div>
-
           <div className="stats-content-grid">
             <section className="stats-card heatmap-card">
               <div className="stats-card-heading">
@@ -738,6 +731,13 @@ export function ManageWindow({
                 ) : null}
               </div>
             </section>
+          </div>
+
+          <div className="stats-summary-grid">
+            <MetricCard label="总提示词" value={formatNumber(statsModel.totalPrompts)} caption="包含已删除历史" />
+            <MetricCard label="总字数" value={formatNumber(statsModel.totalChars)} caption="按提交时文本长度统计" />
+            <MetricCard label="平均字数" value={formatNumber(statsModel.averageChars)} caption="每条 prompt 平均长度" />
+            <MetricCard label="连续写作" value={`${statsModel.currentStreak} 天`} caption="从今天向前连续统计" />
           </div>
 
           <div className="stats-secondary-grid">
@@ -1113,16 +1113,27 @@ export function ManageWindow({
             </div>
           </div>
           <div className="setting-stack">
-            <Segmented
-              label="窗口位置"
-              value={settings.windowPlacement}
-              options={[
-                ["center", "屏幕中央"],
-                ["cursor", "鼠标附近"],
-                ["last", "上次位置"]
-              ]}
-              onChange={(value) => onSettingsChange({ ...settings, windowPlacement: value as SettingsState["windowPlacement"] })}
+            <ThemeSeriesPicker value={settings.visualTheme} onChange={(value) => onSettingsChange({ ...settings, visualTheme: value })} />
+            <input
+              ref={backgroundFileInputRef}
+              className="background-file-input"
+              type="file"
+              accept="image/png,image/jpeg,image/jpg,image/webp,image/gif,image/bmp,image/svg+xml"
+              onChange={(event) => void handleBackgroundFileChange(event)}
             />
+            <BackgroundImageSetting
+              imagePath={settings.editorBackgroundImagePath}
+              hasImage={Boolean(settings.editorBackgroundImageId)}
+              onBrowse={() => backgroundFileInputRef.current?.click()}
+            />
+            {settings.editorBackgroundImageId ? (
+              <BackgroundImageControls
+                settings={settings}
+                previewUrl={backgroundPreviewUrl}
+                onChange={updateBackgroundSettings}
+                onRemove={removeBackgroundImage}
+              />
+            ) : null}
             <div className="setting-row editor-measure-row" role="group" aria-label="编辑框尺寸与透明度">
               <CompactNumberSetting
                 label="宽度"
@@ -1150,33 +1161,24 @@ export function ManageWindow({
                 onChange={(value) => onSettingsChange({ ...settings, editOpacity: value })}
               />
             </div>
-            <Toggle label="显示行号" value={settings.editorLineNumbers} onChange={(value) => onSettingsChange({ ...settings, editorLineNumbers: value })} />
-            <Toggle
-              label="高亮当前行"
-              value={settings.editorCurrentLineHighlight}
-              onChange={(value) => onSettingsChange({ ...settings, editorCurrentLineHighlight: value })}
-            />
-            <input
-              ref={backgroundFileInputRef}
-              className="background-file-input"
-              type="file"
-              accept="image/png,image/jpeg,image/jpg,image/webp,image/gif,image/bmp,image/svg+xml"
-              onChange={(event) => void handleBackgroundFileChange(event)}
-            />
-            <BackgroundImageSetting
-              imagePath={settings.editorBackgroundImagePath}
-              hasImage={Boolean(settings.editorBackgroundImageId)}
-              onBrowse={() => backgroundFileInputRef.current?.click()}
-            />
-            {settings.editorBackgroundImageId ? (
-              <BackgroundImageControls
-                settings={settings}
-                previewUrl={backgroundPreviewUrl}
-                onChange={updateBackgroundSettings}
-                onRemove={removeBackgroundImage}
+            <div className="setting-row appearance-toggle-row" role="group" aria-label="编辑器辅助显示">
+              <InlineToggle label="显示行号" value={settings.editorLineNumbers} onChange={(value) => onSettingsChange({ ...settings, editorLineNumbers: value })} />
+              <InlineToggle
+                label="高亮当前行"
+                value={settings.editorCurrentLineHighlight}
+                onChange={(value) => onSettingsChange({ ...settings, editorCurrentLineHighlight: value })}
               />
-            ) : null}
-            <ThemeSeriesPicker value={settings.visualTheme} onChange={(value) => onSettingsChange({ ...settings, visualTheme: value })} />
+            </div>
+            <Segmented
+              label="窗口位置"
+              value={settings.windowPlacement}
+              options={[
+                ["center", "屏幕中央"],
+                ["cursor", "鼠标附近"],
+                ["last", "上次位置"]
+              ]}
+              onChange={(value) => onSettingsChange({ ...settings, windowPlacement: value as SettingsState["windowPlacement"] })}
+            />
           </div>
         </section>
       );
@@ -1206,7 +1208,7 @@ export function ManageWindow({
   };
 
   return (
-    <main className="manage-shell" aria-label="工作台">
+    <main className="manage-shell" aria-label="Prompt Dock">
       <button
         className="workbench-drag-strip"
         type="button"
@@ -1220,7 +1222,7 @@ export function ManageWindow({
         <div className="brand-block">
           <img className="app-mark" src={appIconUrl} alt="" aria-hidden="true" />
           <div>
-            <strong>工作台</strong>
+            <strong>Prompt Dock</strong>
             <span>本地 prompt 工作台</span>
           </div>
         </div>
@@ -1396,12 +1398,14 @@ function BackgroundImageSetting({
   onBrowse: () => void;
 }) {
   const displayPath = hasImage ? imagePath || "自定义背景图" : "图片地址";
+  const title = `编辑器背景：${displayPath}`;
 
   return (
     <div className="background-setting-row">
-      <button className={`background-address-button ${hasImage ? "" : "is-empty"}`} type="button" onClick={onBrowse} title={displayPath}>
+      <button className={`background-address-button ${hasImage ? "" : "is-empty"}`} type="button" onClick={onBrowse} title={title}>
         <ImageIcon size={16} />
-        <span>{displayPath}</span>
+        <span className="background-address-label">编辑器背景</span>
+        <span className="background-address-value">{displayPath}</span>
       </button>
       <button className="tool-button" type="button" onClick={onBrowse}>
         <FolderOpen size={16} />
@@ -1509,6 +1513,17 @@ function Segmented({ label, value, options, onChange }: SegmentedProps) {
 function Toggle({ label, value, onChange }: { label: string; value: boolean; onChange: (value: boolean) => void }) {
   return (
     <label className="setting-row">
+      <span>{label}</span>
+      <button className={`toggle ${value ? "is-on" : ""}`} type="button" onClick={() => onChange(!value)} aria-pressed={value}>
+        <span />
+      </button>
+    </label>
+  );
+}
+
+function InlineToggle({ label, value, onChange }: { label: string; value: boolean; onChange: (value: boolean) => void }) {
+  return (
+    <label className="inline-toggle">
       <span>{label}</span>
       <button className={`toggle ${value ? "is-on" : ""}`} type="button" onClick={() => onChange(!value)} aria-pressed={value}>
         <span />

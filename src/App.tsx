@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { defaultHistory, defaultSettings, defaultShortcuts, defaultTemplates, nowIso } from "./data/defaults";
 import { getVisualTheme, getVisualThemeSeriesId } from "./data/themeCatalog";
-import { copyText, hideEditWindow, openEditWindow, openManageWindow, setEditWindowSize, setGlobalToggleShortcut } from "./lib/desktop";
+import { copyText, hideEditWindow, openEditWindow, openManageWindow, setEditWindowLayout, setGlobalToggleShortcut } from "./lib/desktop";
 import { storageKeys, usePersistentState, writeValue } from "./lib/persistence";
 import { EditWindow } from "./components/EditWindow";
 import { ManageWindow } from "./components/ManageWindow";
@@ -127,8 +127,8 @@ export function App() {
   }, [normalizedSettings.editOpacity]);
 
   useEffect(() => {
-    void setEditWindowSize(normalizedSettings.editWindowWidth, normalizedSettings.editWindowHeight);
-  }, [normalizedSettings.editWindowHeight, normalizedSettings.editWindowWidth]);
+    void setEditWindowLayout(normalizedSettings.editWindowWidth, normalizedSettings.editWindowHeight, normalizedSettings.windowPlacement);
+  }, [normalizedSettings.editWindowHeight, normalizedSettings.editWindowWidth, normalizedSettings.windowPlacement]);
 
   useEffect(() => {
     const preventContextMenu = (event: MouseEvent) => event.preventDefault();

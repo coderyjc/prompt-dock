@@ -287,6 +287,10 @@ kbd {
   grid-template-columns: var(--editor-gutter-width) minmax(0, 1fr);
 }
 
+.editor-frame:not(.show-line-numbers) .editor-visual-line {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .editor-frame.show-current-line .editor-visual-line.is-current::before {
   content: "";
   position: absolute;
@@ -317,9 +321,14 @@ kbd {
 }
 
 .editor-line-content {
+  grid-column: 2;
   min-width: 0;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
+}
+
+.editor-frame:not(.show-line-numbers) .editor-line-content {
+  grid-column: 1;
 }
 
 .editor-frame:not(.show-line-numbers) .editor-line-number {
@@ -1791,6 +1800,29 @@ textarea:focus-visible {
   gap: 0.75rem;
 }
 
+.appearance-panel .appearance-toggle-row {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.inline-toggle {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.inline-toggle > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-weight: 680;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .editor-measure-control {
   display: grid;
   align-content: center;
@@ -1890,7 +1922,15 @@ textarea:focus-visible {
   color: var(--muted);
 }
 
-.background-address-button span {
+.background-address-label {
+  flex: 0 0 auto;
+  color: var(--accent-strong);
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.background-address-value {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;

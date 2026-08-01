@@ -30,6 +30,15 @@ export const setEditWindowSize = async (width: number, height: number) => {
   }
 };
 
+export const setEditWindowLayout = async (width: number, height: number, placement: "center" | "cursor" | "last") => {
+  try {
+    await invokeCommand("set_edit_window_layout", { width, height, placement });
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 export const copyText = async (text: string) => {
   try {
     await invokeCommand("copy_prompt", { text });
