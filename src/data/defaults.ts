@@ -76,7 +76,8 @@ export const defaultShortcuts: ShortcutItem[] = [
   { id: "template", action: "打开模板选择", keys: "Ctrl + P", scope: "编辑窗口" },
   { id: "save-template", action: "保存为模板", keys: "Ctrl + Shift + S", scope: "编辑窗口" },
   { id: "history", action: "打开历史草稿", keys: "Ctrl + H", scope: "编辑窗口" },
-  { id: "stash", action: "暂存当前 prompt", keys: "Ctrl + J", scope: "编辑窗口" },
+  { id: "save-stash", action: "暂存/保存", keys: "Ctrl + S", scope: "编辑窗口" },
+  { id: "stash", action: "暂存并清除", keys: "Ctrl + J", scope: "编辑窗口" },
   { id: "manage", action: "打开工作台", keys: "Ctrl + ,", scope: "编辑窗口" },
   { id: "escape", action: "关闭弹层/隐藏", keys: "Esc", scope: "编辑窗口" }
 ];
@@ -96,6 +97,7 @@ export const defaultSettings: SettingsState = {
   editWindowHeight: 520,
   editorLineNumbers: true,
   editorCurrentLineHighlight: true,
+  editAlwaysOnTop: true,
   windowPlacement: "center",
   editorBackgroundImageId: "",
   editorBackgroundImage: "",

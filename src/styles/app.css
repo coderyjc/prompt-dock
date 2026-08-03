@@ -220,6 +220,7 @@ kbd {
   --editor-padding-bottom: 0.9rem;
   --editor-padding-left: 3.1rem;
   --editor-gutter-width: 3.25rem;
+  --editor-scrollbar-gutter-width: 0.72rem;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -242,8 +243,11 @@ kbd {
   font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
   font-size: var(--editor-font-size);
   line-height: var(--editor-line-height);
+  line-break: auto;
   opacity: 1;
+  overflow-wrap: break-word;
   transform: translateY(0);
+  word-break: normal;
   transition:
     opacity var(--motion-mid) var(--ease-standard),
     transform var(--motion-mid) var(--ease-standard),
@@ -262,6 +266,7 @@ kbd {
   position: absolute;
   inset: 0;
   z-index: 0;
+  width: calc(100% - var(--editor-scrollbar-gutter-width));
   overflow: hidden;
   padding: var(--editor-padding-top) var(--editor-padding-right) var(--editor-padding-bottom) var(--editor-padding-left);
   color: transparent;
@@ -269,6 +274,26 @@ kbd {
   font-size: var(--editor-font-size);
   line-height: var(--editor-line-height);
   pointer-events: none;
+}
+
+.editor-caret-mirror {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: -1;
+  overflow: hidden;
+  visibility: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.editor-caret-marker {
+  display: inline-block;
+  width: 0;
+  min-width: 0;
+  overflow: hidden;
+  vertical-align: baseline;
 }
 
 .editor-visual-scroll {
@@ -291,16 +316,17 @@ kbd {
   grid-template-columns: minmax(0, 1fr);
 }
 
-.editor-frame.show-current-line .editor-visual-line.is-current::before {
-  content: "";
+.editor-current-line-marker {
   position: absolute;
   top: 0;
-  right: calc(-1 * var(--editor-padding-right));
-  bottom: 0;
-  left: calc(-1 * var(--editor-padding-left));
+  right: 0;
+  left: 0;
+  z-index: 0;
   border-block: 1px solid color-mix(in srgb, var(--accent) 14%, transparent);
   background: color-mix(in srgb, var(--accent) 9%, transparent);
   box-shadow: inset 3px 0 0 color-mix(in srgb, var(--accent) 42%, transparent);
+  pointer-events: none;
+  will-change: transform, height;
 }
 
 .editor-line-number,
@@ -323,8 +349,10 @@ kbd {
 .editor-line-content {
   grid-column: 2;
   min-width: 0;
-  overflow-wrap: anywhere;
+  line-break: auto;
+  overflow-wrap: break-word;
   white-space: pre-wrap;
+  word-break: normal;
 }
 
 .editor-frame:not(.show-line-numbers) .editor-line-content {
@@ -405,6 +433,61 @@ kbd {
 .edit-drag-handle:hover::before {
   width: 4.5rem;
   background: color-mix(in srgb, var(--accent) 58%, transparent);
+}
+
+.edit-save-toast {
+  position: absolute;
+  z-index: 7;
+  top: 2.15rem;
+  left: 50%;
+  min-width: 10rem;
+  max-width: min(72vw, 18rem);
+  overflow: hidden;
+  padding: 0.48rem 0.82rem 0.62rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--surface-solid) 84%, transparent);
+  box-shadow:
+    0 14px 34px rgba(22, 31, 29, 0.12),
+    0 0 0 4px color-mix(in srgb, var(--accent) 8%, transparent);
+  color: var(--accent-strong);
+  font-size: 0.86rem;
+  font-weight: 720;
+  text-align: center;
+  transform: translateX(-50%);
+  backdrop-filter: blur(18px) saturate(150%);
+  animation: edit-save-toast-in 150ms var(--ease-enter) both;
+  pointer-events: none;
+}
+
+.edit-save-toast span {
+  position: relative;
+  z-index: 1;
+}
+
+.edit-save-toast::after {
+  content: "";
+  position: absolute;
+  right: 0.5rem;
+  bottom: 0.28rem;
+  left: 0.5rem;
+  height: 0.15rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.edit-save-toast i {
+  position: absolute;
+  right: 0.5rem;
+  bottom: 0.28rem;
+  left: 0.5rem;
+  z-index: 1;
+  height: 0.15rem;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent);
+  transform-origin: left center;
+  animation: edit-save-toast-progress 1000ms linear forwards;
 }
 
 .edit-corner-actions {
@@ -1761,6 +1844,30 @@ textarea:focus-visible {
   gap: 0.45rem;
 }
 
+.shortcut-conflict-alert {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 2.4rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--danger) 36%, var(--line));
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--danger) 9%, var(--surface-solid));
+  color: var(--danger);
+  font-size: 0.86rem;
+  font-weight: 680;
+}
+
+.shortcut-conflict-alert svg {
+  flex: 0 0 auto;
+}
+
+.shortcut-conflict-alert kbd {
+  border-color: color-mix(in srgb, var(--danger) 24%, var(--line));
+  background: color-mix(in srgb, var(--surface-solid) 84%, transparent);
+  color: var(--danger);
+}
+
 .shortcut-row,
 .setting-row {
   display: grid;
@@ -1801,7 +1908,7 @@ textarea:focus-visible {
 }
 
 .appearance-panel .appearance-toggle-row {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(6.2rem, 0.85fr) minmax(7.2rem, 0.95fr) minmax(13rem, 1.5fr);
   align-items: center;
   gap: 0.75rem;
 }
@@ -2755,6 +2862,26 @@ textarea:focus-visible {
   }
 }
 
+@keyframes edit-save-toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -0.3rem) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+@keyframes edit-save-toast-progress {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
 @keyframes edge-glow-sweep {
   from {
     background-position: 0% 50%;
@@ -3132,7 +3259,7 @@ textarea:focus-visible {
   color: var(--text);
 }
 
-:root[data-visual-series="minimal"] .editor-frame.show-current-line .editor-visual-line.is-current::before {
+:root[data-visual-series="minimal"] .editor-current-line-marker {
   background: color-mix(in srgb, var(--accent) 7%, transparent);
   box-shadow: inset 3px 0 0 color-mix(in srgb, var(--accent) 48%, transparent);
 }
@@ -3142,7 +3269,7 @@ textarea:focus-visible {
   color: var(--text);
 }
 
-:root[data-visual-series="ink"] .editor-frame.show-current-line .editor-visual-line.is-current::before {
+:root[data-visual-series="ink"] .editor-current-line-marker {
   border-block-color: color-mix(in srgb, var(--accent) 18%, transparent);
   background: color-mix(in srgb, var(--accent) 11%, transparent);
 }
@@ -3153,7 +3280,7 @@ textarea:focus-visible {
   text-shadow: 0 0 10px color-mix(in srgb, var(--accent) 42%, transparent);
 }
 
-:root[data-visual-series="geek"] .editor-frame.show-current-line .editor-visual-line.is-current::before {
+:root[data-visual-series="geek"] .editor-current-line-marker {
   border-block-color: color-mix(in srgb, var(--accent) 28%, transparent);
   background: color-mix(in srgb, var(--accent) 13%, transparent);
   box-shadow:

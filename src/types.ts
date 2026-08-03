@@ -59,6 +59,7 @@ export type SettingsState = {
   editWindowHeight: number;
   editorLineNumbers: boolean;
   editorCurrentLineHighlight: boolean;
+  editAlwaysOnTop: boolean;
   windowPlacement: "center" | "cursor" | "last";
   editorBackgroundImageId: string;
   editorBackgroundImage: string;

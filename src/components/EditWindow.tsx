@@ -19,6 +19,7 @@ type EditWindowProps = {
   onOpenManage: () => void;
   onOpenHistory: () => void;
   onStashDraft: () => boolean;
+  onSaveStashDraft: () => boolean;
   onResumeStash: (item: StashItem) => void | Promise<void>;
   onSaveTemplate: () => void;
   onExitEdit: () => void | Promise<void>;
@@ -31,6 +32,12 @@ const estimateTokens = (value: string) => {
 };
 
 const getLineIndexAtCaret = (value: string, caret: number) => value.slice(0, caret).split("\n").length - 1;
+const zeroWidthSpace = "\u200b";
+
+const readPixelValue = (value: string, fallback: number) => {
+  const numeric = Number.parseFloat(value);
+  return Number.isFinite(numeric) ? numeric : fallback;
+};
 
 export function EditWindow({
   draft,
@@ -45,17 +52,26 @@ export function EditWindow({
   onOpenManage,
   onOpenHistory,
   onStashDraft,
+  onSaveStashDraft,
   onResumeStash,
   onSaveTemplate,
   onExitEdit
 }: EditWindowProps) {
   const editorRef = useRef<HTMLTextAreaElement>(null);
+  const caretMirrorRef = useRef<HTMLDivElement>(null);
+  const stashNoticeTimerRef = useRef<number | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [paletteMode, setPaletteMode] = useState<"root" | "stash">("root");
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [backgroundUrl, setBackgroundUrl] = useState("");
-  const [editorViewport, setEditorViewport] = useState({ scrollTop: 0, currentLineIndex: 0 });
+  const [stashNotice, setStashNotice] = useState<{ id: number; message: string } | null>(null);
+  const [editorViewport, setEditorViewport] = useState({
+    scrollTop: 0,
+    currentLineIndex: 0,
+    currentLineTop: 0,
+    currentLineHeight: 0
+  });
 
   const filteredTemplates = useMemo(() => {
     const text = query.trim().toLowerCase();
@@ -103,27 +119,78 @@ export function EditWindow({
   const submitShortcut = formatShortcut(getShortcut("submit", "Ctrl + Enter"));
   const templateShortcut = formatShortcut(getShortcut("template", "Ctrl + P"));
   const stashShortcut = formatShortcut(getShortcut("stash", "Ctrl + J"));
+  const saveStashShortcut = formatShortcut(getShortcut("save-stash", "Ctrl + S"));
   const escapeShortcut = formatShortcut(getShortcut("escape", "Esc"));
   const defaultHint = `${submitShortcut} 复制并退出`;
   const [hint, setHint] = useState(defaultHint);
   const placeholder = [
     "内容会自动保存",
     `- ${templateShortcut} 指令窗口`,
-    `- ${stashShortcut} 暂存提示词`,
+    `- ${saveStashShortcut} 暂存/保存`,
+    `- ${stashShortcut} 暂存并清除`,
     `- ${escapeShortcut} 关闭窗口并保留内容`
   ].join("\n");
+
+  const hideStashNotice = useCallback((id: number) => {
+    if (stashNoticeTimerRef.current) {
+      window.clearTimeout(stashNoticeTimerRef.current);
+      stashNoticeTimerRef.current = null;
+    }
+    setStashNotice((current) => (current?.id === id ? null : current));
+  }, []);
+
+  const showStashNotice = useCallback((message: string) => {
+    if (stashNoticeTimerRef.current) window.clearTimeout(stashNoticeTimerRef.current);
+
+    const id = Date.now();
+    setStashNotice({ id, message });
+    stashNoticeTimerRef.current = window.setTimeout(() => hideStashNotice(id), 1100);
+  }, [hideStashNotice]);
 
   const syncEditorViewport = useCallback(
     (editor: HTMLTextAreaElement | null = editorRef.current, value = draft) => {
       if (!editor) return;
 
+      const caret = editor.selectionStart ?? value.length;
+      const mirror = caretMirrorRef.current;
+      const computed = window.getComputedStyle(editor);
+      const lineHeight = readPixelValue(computed.lineHeight, readPixelValue(computed.fontSize, 16) * 1.72);
+      let currentLineTop = editor.scrollTop > 0 ? -editor.scrollTop : 0;
+
+      if (mirror) {
+        mirror.style.width = `${editor.clientWidth}px`;
+        mirror.style.height = `${Math.max(editor.scrollHeight, editor.clientHeight)}px`;
+        mirror.style.font = computed.font;
+        mirror.style.letterSpacing = computed.letterSpacing;
+        mirror.style.lineHeight = computed.lineHeight;
+        mirror.style.padding = computed.padding;
+        mirror.style.border = computed.border;
+        mirror.style.boxSizing = computed.boxSizing;
+        mirror.style.tabSize = computed.tabSize;
+        mirror.textContent = "";
+        mirror.append(document.createTextNode(value.slice(0, caret) || zeroWidthSpace));
+
+        const marker = document.createElement("span");
+        marker.className = "editor-caret-marker";
+        marker.textContent = zeroWidthSpace;
+        mirror.append(marker);
+        mirror.append(document.createTextNode(value.slice(caret) || zeroWidthSpace));
+
+        currentLineTop = marker.offsetTop - editor.scrollTop;
+      }
+
       const nextViewport = {
         scrollTop: editor.scrollTop,
-        currentLineIndex: getLineIndexAtCaret(value, editor.selectionStart ?? value.length)
+        currentLineIndex: getLineIndexAtCaret(value, caret),
+        currentLineTop: Math.round(currentLineTop * 100) / 100,
+        currentLineHeight: Math.round(lineHeight * 100) / 100
       };
 
       setEditorViewport((current) =>
-        current.scrollTop === nextViewport.scrollTop && current.currentLineIndex === nextViewport.currentLineIndex
+        current.scrollTop === nextViewport.scrollTop &&
+        current.currentLineIndex === nextViewport.currentLineIndex &&
+        current.currentLineTop === nextViewport.currentLineTop &&
+        current.currentLineHeight === nextViewport.currentLineHeight
           ? current
           : nextViewport
       );
@@ -138,6 +205,18 @@ export function EditWindow({
   useEffect(() => {
     window.requestAnimationFrame(() => syncEditorViewport(editorRef.current, draft));
   }, [draft, syncEditorViewport]);
+
+  useEffect(() => {
+    const handleResize = () => window.requestAnimationFrame(() => syncEditorViewport(editorRef.current, draft));
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [draft, syncEditorViewport]);
+
+  useEffect(() => {
+    return () => {
+      if (stashNoticeTimerRef.current) window.clearTimeout(stashNoticeTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -236,7 +315,16 @@ export function EditWindow({
       }
       if (shortcutMatches(event, getShortcut("stash", "Ctrl + J"))) {
         event.preventDefault();
-        setHint(onStashDraft() ? "已放入暂存箱" : "没有内容可暂存");
+        setHint(onStashDraft() ? "已暂存并清除" : "没有内容可暂存");
+        window.requestAnimationFrame(() => editorRef.current?.focus());
+      }
+      if (shortcutMatches(event, getShortcut("save-stash", "Ctrl + S"))) {
+        event.preventDefault();
+        if (onSaveStashDraft()) {
+          showStashNotice("内容已保存");
+        } else {
+          setHint("没有内容可保存");
+        }
         window.requestAnimationFrame(() => editorRef.current?.focus());
       }
       if (shortcutMatches(event, getShortcut("escape", "Esc"))) {
@@ -255,12 +343,14 @@ export function EditWindow({
     onOpenHistory,
     onOpenManage,
     onSaveTemplate,
+    onSaveStashDraft,
     onStashDraft,
     onSubmit,
     paletteMode,
     paletteOpen,
     paletteOptionCount,
-    selectedIndex
+    selectedIndex,
+    showStashNotice
   ]);
 
   useEffect(() => {
@@ -314,6 +404,13 @@ export function EditWindow({
         }}
       />
 
+      {stashNotice ? (
+        <div className="edit-save-toast" role="status" aria-live="polite" key={stashNotice.id}>
+          <span>{stashNotice.message}</span>
+          <i aria-hidden="true" onAnimationEnd={() => hideStashNotice(stashNotice.id)} />
+        </div>
+      ) : null}
+
       <div className="edit-corner-actions" onPointerDown={(event) => event.stopPropagation()}>
         <button className="icon-button subtle" type="button" onClick={onOpenManage} title="打开工作台 Ctrl+,">
           <Settings size={18} />
@@ -324,6 +421,17 @@ export function EditWindow({
       </div>
 
       <div className={editorFrameClass} onPointerDown={(event) => event.stopPropagation()}>
+        <div ref={caretMirrorRef} className="editor-caret-mirror" aria-hidden="true" />
+        {settings.editorCurrentLineHighlight ? (
+          <div
+            className="editor-current-line-marker"
+            aria-hidden="true"
+            style={{
+              height: `${editorViewport.currentLineHeight}px`,
+              transform: `translateY(${editorViewport.currentLineTop}px)`
+            }}
+          />
+        ) : null}
         {showEditorOverlay ? (
           <div className="editor-visual-layer" aria-hidden="true">
             <div

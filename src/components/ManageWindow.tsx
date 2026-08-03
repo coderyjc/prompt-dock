@@ -1,4 +1,5 @@
 import {
+  AlertTriangle,
   Archive,
   BarChart3,
   ClipboardList,
@@ -62,6 +63,11 @@ type HeatTooltipState = {
   y: number;
 };
 
+type ShortcutConflictState = {
+  action: string;
+  keys: string;
+} | null;
+
 type BackgroundImageView = Pick<
   SettingsState,
   | "editorBackgroundImageId"
@@ -103,6 +109,7 @@ const appIconUrl = new URL("../../src-tauri/icons/icon.png", import.meta.url).hr
 const githubUrl = "https://github.com/coderyjc/prompt-dock";
 const historyPageSize = 20;
 const historyModalCloseMs = 240;
+const shortcutModifierOrder = ["ctrl", "alt", "shift", "win"];
 
 const isSection = (value: string | null): value is Section => {
   return navItems.some((item) => item.id === value);
@@ -119,6 +126,25 @@ const sortTemplates = (items: TemplateItem[]) => {
 const makeTemplateId = () => `tpl-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
 const formatNumber = (value: number) => new Intl.NumberFormat("zh-CN").format(value);
+
+const normalizeShortcutPart = (part: string) => {
+  const value = part.trim().toLowerCase();
+  if (value === "control") return "ctrl";
+  if (value === "escape") return "esc";
+  if (value === "meta" || value === "cmd" || value === "super") return "win";
+  return value;
+};
+
+const normalizeShortcutForConflict = (shortcut: string) => {
+  const parts = shortcut.split(/\s*\+\s*/).map((part) => part.trim()).filter(Boolean);
+  if (parts.length === 0) return "";
+
+  const key = normalizeShortcutPart(parts[parts.length - 1]);
+  const modifiers = Array.from(new Set(parts.slice(0, -1).map(normalizeShortcutPart))).sort(
+    (left, right) => shortcutModifierOrder.indexOf(left) - shortcutModifierOrder.indexOf(right)
+  );
+  return [...modifiers, key].join("+");
+};
 
 const toDateKey = (value: string | Date) => {
   const date = value instanceof Date ? value : new Date(value);
@@ -244,6 +270,7 @@ export function ManageWindow({
   const [historyModalPhase, setHistoryModalPhase] = useState<"open" | "closing">("open");
   const [confirmRequest, setConfirmRequest] = useState<ConfirmRequest | null>(null);
   const [recordingShortcutId, setRecordingShortcutId] = useState<string | null>(null);
+  const [shortcutConflict, setShortcutConflict] = useState<ShortcutConflictState>(null);
   const [heatTooltip, setHeatTooltip] = useState<HeatTooltipState | null>(null);
   const [expandedStashIds, setExpandedStashIds] = useState<Set<string>>(() => new Set());
   const [backgroundPreviewUrl, setBackgroundPreviewUrl] = useState("");
@@ -432,7 +459,18 @@ export function ManageWindow({
   };
 
   const updateShortcut = (shortcutId: string, keys: string) => {
+    setShortcutConflict(null);
     onShortcutsChange(shortcuts.map((shortcut) => (shortcut.id === shortcutId ? { ...shortcut, keys } : shortcut)));
+  };
+
+  const findShortcutConflict = (shortcutId: string, keys: string) => {
+    const normalizedKeys = normalizeShortcutForConflict(keys);
+    if (!normalizedKeys) return null;
+
+    return (
+      shortcuts.find((shortcut) => shortcut.id !== shortcutId && normalizeShortcutForConflict(shortcut.keys) === normalizedKeys) ??
+      null
+    );
   };
 
   const runConfirm = () => {
@@ -561,6 +599,12 @@ export function ManageWindow({
 
       const keys = formatKeyboardShortcut(event);
       if (!keys) return;
+      const conflict = findShortcutConflict(recordingShortcutId, keys);
+      if (conflict) {
+        setShortcutConflict({ action: conflict.action, keys });
+        setRecordingShortcutId(null);
+        return;
+      }
 
       updateShortcut(recordingShortcutId, keys);
       setRecordingShortcutId(null);
@@ -981,7 +1025,7 @@ export function ManageWindow({
             {stashItems.length === 0 ? (
               <div className="empty-state">
                 <strong>暂无暂存</strong>
-                <span>在编辑窗口按暂存快捷键后，这里会保留可续写的 prompt。</span>
+                <span>在编辑窗口按 Ctrl+S 保存，或按 Ctrl+J 暂存并清除。</span>
               </div>
             ) : null}
           </div>
@@ -1011,6 +1055,7 @@ export function ManageWindow({
                   type="button"
                   onClick={() => {
                     setRecordingShortcutId(null);
+                    setShortcutConflict(null);
                     onShortcutsChange(defaultShortcuts);
                   }}
                 >
@@ -1026,7 +1071,10 @@ export function ManageWindow({
                       className={`shortcut-row ${isRecording ? "is-recording" : ""}`}
                       key={shortcut.id}
                       type="button"
-                      onClick={() => setRecordingShortcutId(shortcut.id)}
+                      onClick={() => {
+                        setRecordingShortcutId(shortcut.id);
+                        setShortcutConflict(null);
+                      }}
                     >
                       <span>{shortcut.action}</span>
                       <kbd>{isRecording ? "按下新快捷键" : shortcut.keys}</kbd>
@@ -1035,6 +1083,14 @@ export function ManageWindow({
                   );
                 })}
               </div>
+              {shortcutConflict ? (
+                <div className="shortcut-conflict-alert" role="alert">
+                  <AlertTriangle size={16} />
+                  <span>
+                    快捷键 <kbd>{shortcutConflict.keys}</kbd> 已被「{shortcutConflict.action}」使用，请换一个。
+                  </span>
+                </div>
+              ) : null}
             </section>
 
             <section className="settings-group">
@@ -1167,6 +1223,11 @@ export function ManageWindow({
                 label="高亮当前行"
                 value={settings.editorCurrentLineHighlight}
                 onChange={(value) => onSettingsChange({ ...settings, editorCurrentLineHighlight: value })}
+              />
+              <InlineToggle
+                label="编辑框始终显示在窗口顶部"
+                value={settings.editAlwaysOnTop}
+                onChange={(value) => onSettingsChange({ ...settings, editAlwaysOnTop: value })}
               />
             </div>
             <Segmented

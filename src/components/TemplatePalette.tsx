@@ -152,7 +152,7 @@ export function TemplatePalette({
               {stashItems.length === 0 ? (
                 <div className="empty-state">
                   <strong>暂存箱为空</strong>
-                  <span>在编辑窗口按暂存快捷键后，这里会出现内容。</span>
+                  <span>按 Ctrl+S 保存，或按 Ctrl+J 暂存并清除后，这里会出现内容。</span>
                 </div>
               ) : null}
             </>

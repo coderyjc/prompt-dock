@@ -267,6 +267,7 @@ fn set_edit_window_layout(
     width: u32,
     height: u32,
     placement: String,
+    always_on_top: bool,
 ) -> Result<(), String> {
     let window = app
         .get_webview_window("edit")
@@ -286,7 +287,10 @@ fn set_edit_window_layout(
             .map_err(|_| "edit window placement state is unavailable".to_string())?;
         *current = parse_edit_window_placement(&placement);
     }
-    apply_edit_window_size(&window, width, height)
+    apply_edit_window_size(&window, width, height)?;
+    window
+        .set_always_on_top(always_on_top)
+        .map_err(|error| error.to_string())
 }
 
 fn show_window(app: &AppHandle, label: &str) -> Result<(), String> {

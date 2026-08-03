@@ -65,6 +65,7 @@ const mergeSettingsWithDefaults = (items: SettingsState) => {
     editWindowHeight: clampNumber(Math.round(partial.editWindowHeight ?? defaultSettings.editWindowHeight), 360, 1000, defaultSettings.editWindowHeight),
     editorLineNumbers: typeof partial.editorLineNumbers === "boolean" ? partial.editorLineNumbers : defaultSettings.editorLineNumbers,
     editorCurrentLineHighlight: typeof partial.editorCurrentLineHighlight === "boolean" ? partial.editorCurrentLineHighlight : defaultSettings.editorCurrentLineHighlight,
+    editAlwaysOnTop: typeof partial.editAlwaysOnTop === "boolean" ? partial.editAlwaysOnTop : defaultSettings.editAlwaysOnTop,
     editorBackgroundImageId: typeof partial.editorBackgroundImageId === "string" ? partial.editorBackgroundImageId : defaultSettings.editorBackgroundImageId,
     editorBackgroundImage: "",
     editorBackgroundImagePath: typeof partial.editorBackgroundImagePath === "string" ? partial.editorBackgroundImagePath : defaultSettings.editorBackgroundImagePath,
@@ -127,8 +128,18 @@ export function App() {
   }, [normalizedSettings.editOpacity]);
 
   useEffect(() => {
-    void setEditWindowLayout(normalizedSettings.editWindowWidth, normalizedSettings.editWindowHeight, normalizedSettings.windowPlacement);
-  }, [normalizedSettings.editWindowHeight, normalizedSettings.editWindowWidth, normalizedSettings.windowPlacement]);
+    void setEditWindowLayout(
+      normalizedSettings.editWindowWidth,
+      normalizedSettings.editWindowHeight,
+      normalizedSettings.windowPlacement,
+      normalizedSettings.editAlwaysOnTop
+    );
+  }, [
+    normalizedSettings.editAlwaysOnTop,
+    normalizedSettings.editWindowHeight,
+    normalizedSettings.editWindowWidth,
+    normalizedSettings.windowPlacement
+  ]);
 
   useEffect(() => {
     const preventContextMenu = (event: MouseEvent) => event.preventDefault();
@@ -227,15 +238,31 @@ export function App() {
     setTemplates((items) => [next, ...items]);
   };
 
-  const stashCurrentDraft = () => {
+  const saveDraftToStash = ({ clearDraft }: { clearDraft: boolean }) => {
     if (!draft.trim()) return false;
-    const nextStash = makeStashItem(draft);
-    setStashItems((items) => [nextStash, ...items]);
-    setDraft("");
-    writeValue(storageKeys.draft, "");
+    const savedAt = nowIso();
+    const nextBody = draft;
+    setStashItems((items) => {
+      const existing = items.find((item) => item.body === nextBody);
+      const nextStash = existing ? { ...existing, createdAt: savedAt } : { ...makeStashItem(nextBody), createdAt: savedAt };
+      const rest = items.filter((item) => item.id !== nextStash.id && item.body !== nextBody);
+      return [nextStash, ...rest];
+    });
+
+    if (clearDraft) {
+      setDraft("");
+      writeValue(storageKeys.draft, "");
+    } else {
+      writeValue(storageKeys.draft, nextBody);
+    }
+
     setSaveState("saved");
     return true;
   };
+
+  const stashCurrentDraft = () => saveDraftToStash({ clearDraft: true });
+
+  const saveCurrentDraftToStash = () => saveDraftToStash({ clearDraft: false });
 
   const resumeStash = async (item: StashItem) => {
     const currentDraft = draft;
@@ -309,6 +336,7 @@ export function App() {
       onOpenManage={openManage}
       onOpenHistory={() => openManageSection("history")}
       onStashDraft={stashCurrentDraft}
+      onSaveStashDraft={saveCurrentDraftToStash}
       onResumeStash={resumeStash}
       onSaveTemplate={handleSaveTemplate}
       onExitEdit={exitEdit}

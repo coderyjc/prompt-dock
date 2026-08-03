@@ -30,9 +30,9 @@ export const setEditWindowSize = async (width: number, height: number) => {
   }
 };
 
-export const setEditWindowLayout = async (width: number, height: number, placement: "center" | "cursor" | "last") => {
+export const setEditWindowLayout = async (width: number, height: number, placement: "center" | "cursor" | "last", alwaysOnTop: boolean) => {
   try {
-    await invokeCommand("set_edit_window_layout", { width, height, placement });
+    await invokeCommand("set_edit_window_layout", { width, height, placement, alwaysOnTop });
     return true;
   } catch {
     return false;
