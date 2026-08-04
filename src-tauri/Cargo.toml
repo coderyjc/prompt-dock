@@ -1,6 +1,6 @@
 [package]
 name = "prompt-dock"
-version = "1.0.0"
+version = "1.1.0"
 description = "A lightweight Windows-first prompt editor."
 authors = ["Prompt Dock"]
 edition = "2021"

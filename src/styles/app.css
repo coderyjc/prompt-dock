@@ -2634,7 +2634,8 @@ textarea:focus-visible {
   padding: 1rem;
 }
 
-.modal-layer.is-closing .history-modal {
+.modal-layer.is-closing .history-modal,
+.modal-layer.is-closing .confirm-dialog {
   animation: modal-out 240ms var(--ease-exit) forwards;
 }
 
@@ -3020,30 +3021,61 @@ textarea:focus-visible {
 
 :root[data-visual-series="ink"][data-window="manage"] body {
   background:
-    radial-gradient(ellipse at 18% 18%, color-mix(in srgb, var(--text) 9%, transparent) 0 9rem, transparent 18rem),
-    radial-gradient(ellipse at 74% 72%, color-mix(in srgb, var(--accent) 16%, transparent) 0 10rem, transparent 22rem),
-    linear-gradient(140deg, var(--body-start), var(--body-end));
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--text) 12%, transparent) 0 2px, transparent 2px 3.8rem),
+    repeating-linear-gradient(0deg, color-mix(in srgb, var(--text) 9%, transparent) 0 2px, transparent 2px 3.8rem),
+    repeating-linear-gradient(135deg, transparent 0 2.8rem, color-mix(in srgb, var(--warning) 22%, transparent) 2.8rem 3rem),
+    linear-gradient(135deg, var(--body-start), var(--body-end));
 }
 
 :root[data-visual-series="ink"] .manage-shell {
   background:
-    radial-gradient(ellipse at 20% 16%, color-mix(in srgb, var(--text) 8%, transparent) 0 9rem, transparent 23rem),
-    radial-gradient(ellipse at 88% 86%, color-mix(in srgb, var(--accent) 14%, transparent) 0 12rem, transparent 25rem),
-    linear-gradient(145deg, color-mix(in srgb, var(--surface-solid) 84%, var(--bg)), var(--bg));
+    linear-gradient(132deg, color-mix(in srgb, var(--surface-solid) 96%, transparent) 0 25%, transparent 25.2%),
+    linear-gradient(132deg, transparent 0 54%, color-mix(in srgb, #7ff4ff 34%, transparent) 54.2% 75%, transparent 75.2%),
+    linear-gradient(135deg, color-mix(in srgb, var(--bg) 92%, #b5ff68), color-mix(in srgb, var(--warning) 24%, var(--bg)));
+  color: var(--text);
 }
 
 :root[data-visual-series="ink"] .manage-shell::before {
   background:
-    linear-gradient(90deg, transparent 0 46%, color-mix(in srgb, var(--text) 6%, transparent) 46% 48%, transparent 48%),
-    radial-gradient(ellipse at 35% 42%, color-mix(in srgb, var(--text) 10%, transparent) 0 4rem, transparent 18rem),
-    repeating-linear-gradient(100deg, transparent 0 1.2rem, color-mix(in srgb, var(--text) 3%, transparent) 1.2rem 1.26rem);
-  opacity: 0.58;
-  filter: blur(0.2px);
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--text) 10%, transparent) 0 2px, transparent 2px 4.2rem),
+    repeating-linear-gradient(0deg, color-mix(in srgb, var(--text) 8%, transparent) 0 2px, transparent 2px 4.2rem),
+    repeating-linear-gradient(135deg, transparent 0 3rem, color-mix(in srgb, var(--warning) 18%, transparent) 3rem 3.18rem);
+  opacity: 0.72;
+}
+
+:root[data-visual-series="ink"] .manage-shell::after {
+  top: 1.1rem;
+  right: -2rem;
+  bottom: auto;
+  left: auto;
+  width: 17rem;
+  height: 5.4rem;
+  border: 2px solid var(--text);
+  border-radius: 7px;
+  background:
+    linear-gradient(
+      90deg,
+      #ff3da6 0 14%,
+      #ffce35 14% 28%,
+      #2bd7d2 28% 42%,
+      #63e96d 42% 56%,
+      #ff8154 56% 70%,
+      #426bff 70% 84%,
+      #9f5cff 84% 100%
+    );
+  clip-path: polygon(17% 0, 100% 0, 100% 100%, 0 100%);
+  opacity: 0.92;
+  transform: rotate(-7deg);
+  box-shadow: 4px 4px 0 color-mix(in srgb, var(--text) 22%, transparent);
 }
 
 :root[data-visual-series="ink"] .sidebar {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--surface-solid) 72%, transparent), color-mix(in srgb, var(--surface-muted) 72%, transparent));
-  backdrop-filter: blur(18px) saturate(116%);
+  border-right: 2px solid var(--text);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-solid) 92%, transparent), color-mix(in srgb, var(--accent) 16%, var(--surface-muted))),
+    repeating-linear-gradient(135deg, transparent 0 2rem, color-mix(in srgb, var(--warning) 16%, transparent) 2rem 2.14rem);
+  box-shadow: 4px 0 0 color-mix(in srgb, var(--text) 12%, transparent);
+  backdrop-filter: none;
 }
 
 :root[data-visual-series="ink"] .list-panel,
@@ -3052,19 +3084,19 @@ textarea:focus-visible {
 :root[data-visual-series="ink"] .palette,
 :root[data-visual-series="ink"] .history-modal,
 :root[data-visual-series="ink"] .confirm-dialog {
-  border-color: color-mix(in srgb, var(--text) 18%, var(--line));
-  border-radius: 18px 7px 18px 7px;
+  border: 2px solid var(--text);
+  border-radius: 7px;
   background:
-    linear-gradient(155deg, color-mix(in srgb, var(--surface-solid) 86%, transparent), color-mix(in srgb, var(--surface-muted) 64%, transparent)),
-    radial-gradient(ellipse at 100% 0, color-mix(in srgb, var(--accent) 12%, transparent), transparent 16rem);
+    linear-gradient(135deg, color-mix(in srgb, var(--surface-solid) 96%, transparent) 0 46%, color-mix(in srgb, var(--warning) 24%, var(--surface-solid)) 46.2% 61%, color-mix(in srgb, #7ff4ff 34%, var(--surface-solid)) 61.2% 100%);
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, white 24%, transparent),
-    0 24px 58px rgba(22, 31, 29, 0.1);
-  backdrop-filter: blur(22px) saturate(112%);
+    4px 4px 0 color-mix(in srgb, var(--text) 22%, transparent),
+    0 16px 32px color-mix(in srgb, var(--text) 9%, transparent);
+  backdrop-filter: none;
 }
 
 :root[data-visual-series="ink"] .metric-card,
 :root[data-visual-series="ink"] .stats-card,
+:root[data-visual-series="ink"] .template-option,
 :root[data-visual-series="ink"] .manage-list-item,
 :root[data-visual-series="ink"] .history-item,
 :root[data-visual-series="ink"] .stash-item,
@@ -3074,10 +3106,13 @@ textarea:focus-visible {
 :root[data-visual-series="ink"] .shortcut-row,
 :root[data-visual-series="ink"] .theme-series-row,
 :root[data-visual-series="ink"] .settings-group {
-  border-color: color-mix(in srgb, var(--text) 13%, var(--line));
-  border-radius: 14px 5px 14px 5px;
-  background: linear-gradient(110deg, color-mix(in srgb, var(--surface-solid) 88%, transparent), color-mix(in srgb, var(--surface-muted) 62%, transparent));
-  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--text) 5%, transparent);
+  border: 2px solid var(--text);
+  border-radius: 7px;
+  background:
+    linear-gradient(90deg, var(--danger) 0 0.42rem, transparent 0.42rem),
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-solid) 96%, transparent), color-mix(in srgb, var(--surface-muted) 34%, var(--surface-solid)));
+  box-shadow: 3px 3px 0 color-mix(in srgb, var(--text) 18%, transparent);
+  backdrop-filter: none;
 }
 
 :root[data-visual-series="ink"] .icon-button,
@@ -3086,64 +3121,193 @@ textarea:focus-visible {
 :root[data-visual-series="ink"] .background-address-button,
 :root[data-visual-series="ink"] .segmented,
 :root[data-visual-series="ink"] .toggle {
-  border-radius: 999px 999px 999px 7px;
-  background: color-mix(in srgb, var(--surface-solid) 80%, transparent);
-  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--text) 6%, transparent);
+  border: 2px solid var(--text);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--surface-solid) 96%, transparent);
+  box-shadow: 2px 2px 0 color-mix(in srgb, var(--text) 18%, transparent);
+  backdrop-filter: none;
+}
+
+:root[data-visual-series="ink"] .tool-button.primary,
+:root[data-visual-series="ink"] .segmented button.is-active,
+:root[data-visual-series="ink"] .sidebar nav button.is-active,
+:root[data-visual-series="ink"] .theme-choice.is-active,
+:root[data-visual-series="ink"] .toggle.is-on {
+  border-color: var(--text);
+  background: linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent) 82%, var(--warning)));
+  color: var(--text);
+  box-shadow:
+    3px 3px 0 color-mix(in srgb, var(--text) 24%, transparent),
+    inset 0 -2px 0 color-mix(in srgb, var(--text) 12%, transparent);
+}
+
+:root[data-visual-series="ink"] .tool-button:hover,
+:root[data-visual-series="ink"] .icon-button:hover,
+:root[data-visual-series="ink"] .theme-choice:hover,
+:root[data-visual-series="ink"] .shortcut-row:hover,
+:root[data-visual-series="ink"] .manage-list-item:hover,
+:root[data-visual-series="ink"] .history-item:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0 color-mix(in srgb, var(--text) 22%, transparent);
+}
+
+:root[data-visual-series="ink"] .segmented {
+  padding: 0.18rem;
+}
+
+:root[data-visual-series="ink"] .segmented button {
+  border-radius: 5px;
+}
+
+:root[data-visual-series="ink"] .brand-block {
+  border: 2px solid var(--text);
+  border-radius: 7px;
+  padding: 0.45rem;
+  background: color-mix(in srgb, var(--surface-solid) 88%, transparent);
+  box-shadow: 3px 3px 0 color-mix(in srgb, var(--text) 16%, transparent);
+}
+
+:root[data-visual-series="ink"] .app-mark {
+  border: 2px solid var(--text);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--surface-solid) 90%, transparent);
 }
 
 :root[data-visual-series="ink"] .nav-indicator {
-  border-radius: 999px 7px 999px 7px;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 13%, var(--surface-solid)), color-mix(in srgb, var(--surface-solid) 78%, transparent));
-  box-shadow: inset 3px 0 0 var(--accent);
+  border: 2px solid var(--text);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--accent) 34%, var(--surface-solid));
+  box-shadow: 3px 3px 0 color-mix(in srgb, var(--text) 18%, transparent);
+}
+
+:root[data-visual-series="ink"] .metric-card::before,
+:root[data-visual-series="ink"] .stats-card::before {
+  background: linear-gradient(90deg, #ff3da6, #ffce35, #2bd7d2, #63e96d, #426bff);
 }
 
 :root[data-visual-series="ink"] .edit-shell {
   background:
-    radial-gradient(ellipse at 20% 18%, color-mix(in srgb, var(--text) 9%, transparent) 0 8rem, transparent 20rem),
-    radial-gradient(ellipse at 82% 82%, color-mix(in srgb, var(--accent) 14%, transparent) 0 9rem, transparent 22rem),
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--text) 10%, transparent) 0 2px, transparent 2px 4rem),
+    repeating-linear-gradient(0deg, color-mix(in srgb, var(--text) 7%, transparent) 0 2px, transparent 2px 4rem),
+    repeating-linear-gradient(135deg, transparent 0 3rem, color-mix(in srgb, var(--warning) 18%, transparent) 3rem 3.14rem),
     linear-gradient(
-      142deg,
-      color-mix(in srgb, var(--surface-solid) var(--editor-opacity-percent), transparent),
+      135deg,
+      color-mix(in srgb, var(--bg) var(--editor-opacity-percent), transparent),
       color-mix(in srgb, var(--surface-muted) var(--editor-opacity-percent), transparent)
     );
-  backdrop-filter: blur(18px) saturate(118%);
+  backdrop-filter: none;
+}
+
+:root[data-visual-series="ink"] .edit-shell::before {
+  content: "";
+  position: absolute;
+  right: -2.2rem;
+  bottom: 4.2rem;
+  z-index: 0;
+  width: 17rem;
+  height: 5rem;
+  border: 2px solid var(--text);
+  border-radius: 7px;
+  background:
+    linear-gradient(
+      90deg,
+      #ff3da6 0 14%,
+      #ffce35 14% 28%,
+      #2bd7d2 28% 42%,
+      #63e96d 42% 56%,
+      #ff8154 56% 70%,
+      #426bff 70% 84%,
+      #9f5cff 84% 100%
+    );
+  clip-path: polygon(17% 0, 100% 0, 100% 100%, 0 100%);
+  opacity: 0.76;
+  transform: rotate(-7deg);
+  pointer-events: none;
+}
+
+:root[data-visual-series="ink"] .edit-drag-handle::before {
+  border: 1px solid color-mix(in srgb, var(--text) 18%, transparent);
+  background: linear-gradient(90deg, #ff3da6, #ffce35, #2bd7d2, #63e96d, #426bff);
+}
+
+:root[data-visual-series="ink"] .edit-corner-actions .icon-button,
+:root[data-visual-series="ink"] .edit-save-toast {
+  border: 2px solid var(--text);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--surface-solid) 94%, transparent);
+  box-shadow: 3px 3px 0 color-mix(in srgb, var(--text) 18%, transparent);
+}
+
+:root[data-visual-series="ink"] .editor-frame textarea {
+  color: var(--text);
+  text-shadow: 0 1px 0 color-mix(in srgb, var(--surface-solid) 50%, transparent);
+}
+
+:root[data-visual-series="ink"] .editor-current-line-marker {
+  border-block-color: color-mix(in srgb, var(--text) 16%, transparent);
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+  box-shadow: inset 5px 0 0 var(--danger);
+}
+
+:root[data-visual-series="ink"] .editor-line-number {
+  color: var(--danger);
+  font-weight: 760;
 }
 
 :root[data-visual-series="geek"][data-window="manage"] body {
   background:
-    radial-gradient(circle at 18% 14%, color-mix(in srgb, var(--accent) 20%, transparent) 0 10rem, transparent 22rem),
-    radial-gradient(circle at 84% 78%, color-mix(in srgb, var(--accent-strong) 18%, transparent) 0 12rem, transparent 24rem),
-    repeating-linear-gradient(0deg, color-mix(in srgb, var(--accent) 6%, transparent) 0 1px, transparent 1px 3.2rem),
-    repeating-linear-gradient(90deg, color-mix(in srgb, var(--accent) 5%, transparent) 0 1px, transparent 1px 3.2rem),
+    radial-gradient(circle at 18% 16%, color-mix(in srgb, var(--accent) 28%, transparent) 0 8rem, transparent 23rem),
+    radial-gradient(circle at 88% 22%, color-mix(in srgb, var(--accent-strong) 20%, transparent) 0 7rem, transparent 20rem),
+    radial-gradient(circle at 72% 86%, color-mix(in srgb, #ffd8f1 16%, transparent) 0 9rem, transparent 24rem),
+    repeating-linear-gradient(58deg, color-mix(in srgb, white 15%, transparent) 0 1px, transparent 1px 5.4rem),
+    repeating-linear-gradient(122deg, color-mix(in srgb, var(--accent) 10%, transparent) 0 1px, transparent 1px 6.2rem),
     linear-gradient(135deg, var(--body-start), var(--body-end));
 }
 
 :root[data-visual-series="geek"] .manage-shell {
   background:
-    radial-gradient(circle at 12% 8%, color-mix(in srgb, var(--accent) 20%, transparent) 0 8rem, transparent 18rem),
-    radial-gradient(circle at 86% 82%, color-mix(in srgb, var(--accent-strong) 18%, transparent) 0 10rem, transparent 22rem),
-    linear-gradient(135deg, color-mix(in srgb, var(--surface-solid) 62%, transparent), color-mix(in srgb, var(--bg) 88%, transparent));
+    linear-gradient(128deg, color-mix(in srgb, white 38%, transparent) 0 14%, transparent 14.2% 34%, color-mix(in srgb, var(--accent) 12%, transparent) 34.2% 47%, transparent 47.2%),
+    radial-gradient(circle at 12% 10%, color-mix(in srgb, var(--accent) 22%, transparent) 0 8rem, transparent 20rem),
+    radial-gradient(circle at 92% 78%, color-mix(in srgb, var(--accent-strong) 20%, transparent) 0 10rem, transparent 24rem),
+    linear-gradient(135deg, color-mix(in srgb, var(--surface-solid) 74%, transparent), color-mix(in srgb, var(--bg) 86%, transparent));
+  color: var(--text);
 }
 
 :root[data-visual-series="geek"] .manage-shell::before {
   background:
-    linear-gradient(90deg, color-mix(in srgb, var(--accent) 12%, transparent) 0 1px, transparent 1px 4.2rem),
-    linear-gradient(180deg, color-mix(in srgb, var(--accent) 9%, transparent) 0 1px, transparent 1px 4.2rem);
-  opacity: 0.55;
-  mask-image: radial-gradient(circle at 52% 46%, black, transparent 76%);
+    repeating-linear-gradient(60deg, color-mix(in srgb, var(--accent) 13%, transparent) 0 1px, transparent 1px 4.6rem),
+    repeating-linear-gradient(120deg, color-mix(in srgb, white 18%, transparent) 0 1px, transparent 1px 5.1rem),
+    linear-gradient(145deg, color-mix(in srgb, var(--accent-strong) 8%, transparent), transparent 44%);
+  opacity: 0.68;
+  mask-image: radial-gradient(circle at 52% 46%, black, transparent 78%);
 }
 
 :root[data-visual-series="geek"] .manage-shell::after {
-  background: repeating-linear-gradient(180deg, transparent 0 0.42rem, color-mix(in srgb, var(--accent) 4%, transparent) 0.42rem 0.48rem);
+  top: -2.8rem;
+  right: -3.5rem;
+  bottom: auto;
+  left: auto;
+  width: 24rem;
+  height: 17rem;
+  background:
+    linear-gradient(118deg, color-mix(in srgb, white 48%, transparent), transparent 38%),
+    linear-gradient(146deg, color-mix(in srgb, var(--accent) 34%, transparent), transparent 54%),
+    linear-gradient(24deg, color-mix(in srgb, #d6b7ff 24%, transparent), color-mix(in srgb, var(--accent-strong) 18%, transparent));
+  clip-path: polygon(0 28%, 36% 0, 100% 16%, 86% 72%, 36% 100%, 7% 72%);
+  filter: blur(0.2px);
   mix-blend-mode: screen;
-  opacity: 0.42;
+  opacity: 0.54;
 }
 
 :root[data-visual-series="geek"] .sidebar {
-  border-right-color: color-mix(in srgb, var(--accent) 38%, var(--line));
-  background: color-mix(in srgb, var(--surface-solid) 58%, transparent);
-  backdrop-filter: blur(28px) saturate(170%);
-  box-shadow: inset -1px 0 0 color-mix(in srgb, var(--accent) 32%, transparent);
+  border-right-color: color-mix(in srgb, var(--accent) 42%, var(--line));
+  background:
+    linear-gradient(160deg, color-mix(in srgb, white 16%, transparent), transparent 38%),
+    color-mix(in srgb, var(--surface-solid) 66%, transparent);
+  backdrop-filter: blur(30px) saturate(185%);
+  box-shadow:
+    inset -1px 0 0 color-mix(in srgb, white 30%, transparent),
+    inset -5px 0 18px color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 :root[data-visual-series="geek"] .list-panel,
@@ -3152,19 +3316,22 @@ textarea:focus-visible {
 :root[data-visual-series="geek"] .palette,
 :root[data-visual-series="geek"] .history-modal,
 :root[data-visual-series="geek"] .confirm-dialog {
-  border-color: color-mix(in srgb, var(--accent) 34%, var(--line));
-  border-radius: 10px;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--surface-solid) 58%, transparent), color-mix(in srgb, var(--surface-muted) 44%, transparent));
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--line));
+  border-radius: 8px;
+  background:
+    linear-gradient(132deg, color-mix(in srgb, white 26%, transparent) 0 13%, transparent 13.2% 58%, color-mix(in srgb, var(--accent) 10%, transparent) 58.2% 72%, transparent 72.2%),
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-solid) 70%, transparent), color-mix(in srgb, var(--surface-muted) 48%, transparent));
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, white 8%, transparent),
-    0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent),
-    0 22px 72px rgba(0, 0, 0, 0.18),
-    0 0 42px color-mix(in srgb, var(--accent) 13%, transparent);
-  backdrop-filter: blur(28px) saturate(175%);
+    inset 0 0 0 1px color-mix(in srgb, white 34%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 46%, transparent),
+    0 24px 78px rgba(38, 113, 142, 0.18),
+    0 0 42px color-mix(in srgb, var(--accent) 14%, transparent);
+  backdrop-filter: blur(30px) saturate(185%);
 }
 
 :root[data-visual-series="geek"] .metric-card,
 :root[data-visual-series="geek"] .stats-card,
+:root[data-visual-series="geek"] .template-option,
 :root[data-visual-series="geek"] .manage-list-item,
 :root[data-visual-series="geek"] .history-item,
 :root[data-visual-series="geek"] .stash-item,
@@ -3174,13 +3341,16 @@ textarea:focus-visible {
 :root[data-visual-series="geek"] .shortcut-row,
 :root[data-visual-series="geek"] .theme-series-row,
 :root[data-visual-series="geek"] .settings-group {
-  border-color: color-mix(in srgb, var(--accent) 28%, var(--line));
-  border-radius: 8px;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--surface-solid) 62%, transparent), color-mix(in srgb, var(--surface-muted) 48%, transparent));
+  border-color: color-mix(in srgb, var(--accent) 32%, var(--line));
+  border-radius: 7px;
+  background:
+    linear-gradient(142deg, color-mix(in srgb, white 22%, transparent) 0 20%, transparent 20.2%),
+    linear-gradient(135deg, color-mix(in srgb, var(--surface-solid) 72%, transparent), color-mix(in srgb, var(--surface-muted) 54%, transparent));
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, white 7%, transparent),
-    0 0 24px color-mix(in srgb, var(--accent) 9%, transparent);
-  backdrop-filter: blur(18px) saturate(160%);
+    inset 0 0 0 1px color-mix(in srgb, white 26%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 34%, transparent),
+    0 12px 30px color-mix(in srgb, var(--accent) 10%, transparent);
+  backdrop-filter: blur(20px) saturate(170%);
 }
 
 :root[data-visual-series="geek"] .icon-button,
@@ -3189,46 +3359,104 @@ textarea:focus-visible {
 :root[data-visual-series="geek"] .background-address-button,
 :root[data-visual-series="geek"] .segmented,
 :root[data-visual-series="geek"] .toggle {
-  border-color: color-mix(in srgb, var(--accent) 42%, var(--line));
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--surface-solid) 58%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 44%, var(--line));
+  border-radius: 7px;
+  background:
+    linear-gradient(155deg, color-mix(in srgb, white 30%, transparent), transparent 46%),
+    color-mix(in srgb, var(--surface-solid) 66%, transparent);
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, white 8%, transparent),
-    0 0 18px color-mix(in srgb, var(--accent) 12%, transparent);
-  backdrop-filter: blur(14px) saturate(170%);
+    inset 0 0 0 1px color-mix(in srgb, white 26%, transparent),
+    0 0 20px color-mix(in srgb, var(--accent) 12%, transparent);
+  backdrop-filter: blur(16px) saturate(180%);
 }
 
 :root[data-visual-series="geek"] .tool-button.primary,
+:root[data-visual-series="geek"] .segmented button.is-active,
+:root[data-visual-series="geek"] .theme-choice.is-active,
+:root[data-visual-series="geek"] .toggle.is-on,
 :root[data-visual-series="geek"] .sidebar nav button.is-active {
   color: var(--text);
-  text-shadow: 0 0 10px color-mix(in srgb, var(--accent) 52%, transparent);
-  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 42%, transparent), color-mix(in srgb, var(--accent-strong) 20%, transparent));
+  text-shadow: 0 1px 0 color-mix(in srgb, white 24%, transparent);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, white 24%, transparent), transparent 42%),
+    linear-gradient(135deg, color-mix(in srgb, var(--accent) 44%, transparent), color-mix(in srgb, var(--accent-strong) 24%, transparent));
   box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent),
-    0 0 24px color-mix(in srgb, var(--accent) 30%, transparent);
+    inset 0 0 0 1px color-mix(in srgb, white 32%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--accent) 42%, transparent),
+    0 0 28px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 :root[data-visual-series="geek"] .nav-indicator {
-  border-color: color-mix(in srgb, var(--accent) 54%, var(--line));
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--accent) 14%, var(--surface-solid));
+  border-color: color-mix(in srgb, var(--accent) 56%, var(--line));
+  border-radius: 7px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, white 24%, transparent), transparent 42%),
+    color-mix(in srgb, var(--accent) 16%, var(--surface-solid));
   box-shadow:
-    inset 3px 0 0 var(--accent),
-    0 0 24px color-mix(in srgb, var(--accent) 22%, transparent);
+    inset 3px 0 0 color-mix(in srgb, var(--accent-strong) 80%, var(--accent)),
+    0 0 26px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 :root[data-visual-series="geek"] .edit-shell {
   background:
-    repeating-linear-gradient(0deg, color-mix(in srgb, var(--accent) 7%, transparent) 0 1px, transparent 1px 3.5rem),
-    repeating-linear-gradient(90deg, color-mix(in srgb, var(--accent) 5%, transparent) 0 1px, transparent 1px 3.5rem),
-    radial-gradient(circle at 82% 18%, color-mix(in srgb, var(--accent) 18%, transparent) 0 9rem, transparent 20rem),
+    linear-gradient(124deg, color-mix(in srgb, white 28%, transparent) 0 11rem, transparent 11.1rem 21rem, color-mix(in srgb, var(--accent) 10%, transparent) 21.1rem 28rem, transparent 28.1rem),
+    repeating-linear-gradient(60deg, color-mix(in srgb, var(--accent) 9%, transparent) 0 1px, transparent 1px 4.5rem),
+    repeating-linear-gradient(120deg, color-mix(in srgb, white 14%, transparent) 0 1px, transparent 1px 5rem),
+    radial-gradient(circle at 84% 18%, color-mix(in srgb, var(--accent) 22%, transparent) 0 9rem, transparent 22rem),
+    radial-gradient(circle at 14% 82%, color-mix(in srgb, var(--accent-strong) 16%, transparent) 0 8rem, transparent 20rem),
     linear-gradient(
       135deg,
       color-mix(in srgb, var(--surface-solid) var(--editor-opacity-percent), transparent),
       color-mix(in srgb, var(--surface-muted) var(--editor-opacity-percent), transparent)
     );
-  backdrop-filter: blur(24px) saturate(175%);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent);
+  backdrop-filter: blur(26px) saturate(190%);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, white 24%, transparent),
+    inset 0 0 36px color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+:root[data-visual-series="geek"] .edit-shell::before {
+  content: "";
+  position: absolute;
+  right: -3.2rem;
+  bottom: 3.2rem;
+  z-index: 0;
+  width: 19rem;
+  height: 12rem;
+  background:
+    linear-gradient(125deg, color-mix(in srgb, white 48%, transparent), transparent 36%),
+    linear-gradient(160deg, color-mix(in srgb, var(--accent) 28%, transparent), transparent 58%),
+    linear-gradient(28deg, color-mix(in srgb, #d7c7ff 24%, transparent), color-mix(in srgb, var(--accent-strong) 16%, transparent));
+  clip-path: polygon(5% 44%, 34% 0, 100% 13%, 88% 72%, 43% 100%, 0 77%);
+  opacity: 0.48;
+  pointer-events: none;
+}
+
+:root[data-visual-series="geek"] .edit-drag-handle::before {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 68%, white), color-mix(in srgb, var(--accent-strong) 70%, white));
+  box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 32%, transparent);
+}
+
+:root[data-visual-series="geek"] .edit-corner-actions .icon-button,
+:root[data-visual-series="geek"] .edit-save-toast {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--line));
+  background:
+    linear-gradient(150deg, color-mix(in srgb, white 30%, transparent), transparent 46%),
+    color-mix(in srgb, var(--surface-solid) 74%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, white 28%, transparent),
+    0 12px 28px color-mix(in srgb, var(--accent) 13%, transparent);
+  backdrop-filter: blur(18px) saturate(180%);
+}
+
+:root[data-visual-series="geek"] .editor-frame textarea {
+  color: var(--text);
+  text-shadow: 0 1px 0 color-mix(in srgb, white 14%, transparent);
+}
+
+:root[data-visual-series="geek"] .editor-line-number {
+  color: color-mix(in srgb, var(--accent-strong) 76%, var(--text));
+  font-weight: 720;
 }
 
 :root[data-visual-series] .edit-close-button {
@@ -3265,27 +3493,73 @@ textarea:focus-visible {
 }
 
 :root[data-visual-series="ink"] .editor-frame textarea::selection {
-  background: color-mix(in srgb, var(--accent) 30%, var(--surface-muted));
+  background: color-mix(in srgb, var(--danger) 34%, var(--accent));
   color: var(--text);
 }
 
 :root[data-visual-series="ink"] .editor-current-line-marker {
-  border-block-color: color-mix(in srgb, var(--accent) 18%, transparent);
-  background: color-mix(in srgb, var(--accent) 11%, transparent);
+  border-block-color: color-mix(in srgb, var(--text) 16%, transparent);
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+  box-shadow: inset 5px 0 0 var(--danger);
 }
 
 :root[data-visual-series="geek"] .editor-frame textarea::selection {
-  background: color-mix(in srgb, var(--accent) 48%, transparent);
+  background: color-mix(in srgb, var(--accent) 36%, white 18%);
   color: var(--text);
-  text-shadow: 0 0 10px color-mix(in srgb, var(--accent) 42%, transparent);
+  text-shadow: 0 1px 0 color-mix(in srgb, white 18%, transparent);
 }
 
 :root[data-visual-series="geek"] .editor-current-line-marker {
-  border-block-color: color-mix(in srgb, var(--accent) 28%, transparent);
-  background: color-mix(in srgb, var(--accent) 13%, transparent);
+  border-block-color: color-mix(in srgb, var(--accent) 24%, transparent);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--accent) 18%, transparent), transparent 34%),
+    color-mix(in srgb, white 16%, transparent);
   box-shadow:
-    inset 3px 0 0 color-mix(in srgb, var(--accent) 58%, transparent),
-    0 0 24px color-mix(in srgb, var(--accent) 14%, transparent);
+    inset 4px 0 0 color-mix(in srgb, var(--accent-strong) 70%, var(--accent)),
+    0 0 26px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+:root[data-visual-series="ink"] .template-option.is-selected,
+:root[data-visual-series="ink"] .manage-list-item.is-active {
+  border-color: var(--text);
+  background:
+    linear-gradient(90deg, var(--danger) 0 0.55rem, transparent 0.55rem),
+    linear-gradient(180deg, color-mix(in srgb, var(--accent) 86%, var(--surface-solid)), color-mix(in srgb, var(--warning) 36%, var(--surface-solid)));
+  box-shadow:
+    5px 5px 0 color-mix(in srgb, var(--text) 28%, transparent),
+    inset 0 -2px 0 color-mix(in srgb, var(--text) 16%, transparent);
+  color: var(--text);
+  transform: translate(-1px, -1px);
+}
+
+:root[data-visual-series="ink"] .template-option.is-selected .option-title,
+:root[data-visual-series="ink"] .template-option.is-selected .option-description,
+:root[data-visual-series="ink"] .manage-list-item.is-active .list-title,
+:root[data-visual-series="ink"] .manage-list-item.is-active span {
+  color: var(--text);
+}
+
+:root[data-visual-series="geek"] .template-option.is-selected,
+:root[data-visual-series="geek"] .manage-list-item.is-active {
+  border-color: color-mix(in srgb, var(--accent-strong) 62%, var(--line));
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--accent-strong) 82%, var(--accent)) 0 0.28rem, transparent 0.28rem),
+    linear-gradient(135deg, color-mix(in srgb, white 30%, transparent), transparent 42%),
+    linear-gradient(135deg, color-mix(in srgb, var(--accent) 42%, var(--surface-solid)), color-mix(in srgb, var(--accent-strong) 24%, var(--surface-muted)));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, white 42%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--accent) 38%, transparent),
+    0 0 34px color-mix(in srgb, var(--accent) 28%, transparent),
+    0 14px 34px rgba(38, 113, 142, 0.16);
+  color: var(--text);
+  transform: translateY(-1px);
+}
+
+:root[data-visual-series="geek"] .template-option.is-selected .option-title,
+:root[data-visual-series="geek"] .template-option.is-selected .option-description,
+:root[data-visual-series="geek"] .manage-list-item.is-active .list-title,
+:root[data-visual-series="geek"] .manage-list-item.is-active span {
+  color: var(--text);
 }
 
 @media (prefers-reduced-motion: reduce) {
