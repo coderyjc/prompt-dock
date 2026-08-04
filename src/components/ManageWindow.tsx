@@ -109,6 +109,7 @@ const appIconUrl = new URL("../../src-tauri/icons/icon.png", import.meta.url).hr
 const githubUrl = "https://github.com/coderyjc/prompt-dock";
 const historyPageSize = 20;
 const historyModalCloseMs = 240;
+const confirmDialogCloseMs = 240;
 const shortcutModifierOrder = ["ctrl", "alt", "shift", "win"];
 
 const isSection = (value: string | null): value is Section => {
@@ -269,6 +270,7 @@ export function ManageWindow({
   const [historyVisibleCount, setHistoryVisibleCount] = useState(historyPageSize);
   const [historyModalPhase, setHistoryModalPhase] = useState<"open" | "closing">("open");
   const [confirmRequest, setConfirmRequest] = useState<ConfirmRequest | null>(null);
+  const [confirmPhase, setConfirmPhase] = useState<"open" | "closing">("open");
   const [recordingShortcutId, setRecordingShortcutId] = useState<string | null>(null);
   const [shortcutConflict, setShortcutConflict] = useState<ShortcutConflictState>(null);
   const [heatTooltip, setHeatTooltip] = useState<HeatTooltipState | null>(null);
@@ -282,6 +284,7 @@ export function ManageWindow({
   const settleTimer = useRef<number | undefined>(undefined);
   const historyClearTimer = useRef<number | undefined>(undefined);
   const historyModalCloseTimer = useRef<number | undefined>(undefined);
+  const confirmCloseTimer = useRef<number | undefined>(undefined);
 
   const sortedTemplates = useMemo(() => sortTemplates(templates), [templates]);
   const statsModel = useMemo(() => buildStatsModel(promptStats, templates), [promptStats, templates]);
@@ -375,6 +378,8 @@ export function ManageWindow({
 
   const askDeleteTemplate = (template: TemplateItem) => {
     setTemplateMenu(null);
+    window.clearTimeout(confirmCloseTimer.current);
+    setConfirmPhase("open");
     setConfirmRequest({
       title: "删除模板",
       message: `确认删除「${template.title}」？这个操作会移除模板正文和说明。`,
@@ -384,6 +389,8 @@ export function ManageWindow({
   };
 
   const askDeleteHistory = (item: HistoryItem) => {
+    window.clearTimeout(confirmCloseTimer.current);
+    setConfirmPhase("open");
     setConfirmRequest({
       title: "删除历史",
       message: "确认删除这条 prompt 历史？",
@@ -450,6 +457,8 @@ export function ManageWindow({
   };
 
   const askDeleteStash = (item: StashItem) => {
+    window.clearTimeout(confirmCloseTimer.current);
+    setConfirmPhase("open");
     setConfirmRequest({
       title: "删除暂存",
       message: "确认删除这条暂存 prompt？",
@@ -473,10 +482,21 @@ export function ManageWindow({
     );
   };
 
+  const closeConfirmDialog = (afterClose?: () => void) => {
+    if (!confirmRequest || confirmPhase === "closing") return;
+
+    setConfirmPhase("closing");
+    window.clearTimeout(confirmCloseTimer.current);
+    confirmCloseTimer.current = window.setTimeout(() => {
+      setConfirmRequest(null);
+      setConfirmPhase("open");
+      afterClose?.();
+    }, confirmDialogCloseMs);
+  };
+
   const runConfirm = () => {
     const action = confirmRequest?.onConfirm;
-    setConfirmRequest(null);
-    action?.();
+    closeConfirmDialog(action);
   };
 
   const placeHeatTooltip = (
@@ -552,6 +572,7 @@ export function ManageWindow({
       window.clearTimeout(settleTimer.current);
       window.clearTimeout(historyClearTimer.current);
       window.clearTimeout(historyModalCloseTimer.current);
+      window.clearTimeout(confirmCloseTimer.current);
     };
   }, []);
 
@@ -642,7 +663,7 @@ export function ManageWindow({
 
       if (confirmRequest) {
         event.preventDefault();
-        setConfirmRequest(null);
+        closeConfirmDialog();
         return;
       }
       if (templateMenu) {
@@ -658,7 +679,7 @@ export function ManageWindow({
 
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [activeHistoryId, confirmRequest, templateMenu]);
+  }, [activeHistoryId, confirmPhase, confirmRequest, templateMenu]);
 
   useEffect(() => {
     if (!templateMenu) return;
@@ -1377,12 +1398,16 @@ export function ManageWindow({
       ) : null}
 
       {confirmRequest ? (
-        <div className="modal-layer is-top" role="presentation" onPointerDown={() => setConfirmRequest(null)}>
+        <div
+          className={`modal-layer is-top ${confirmPhase === "closing" ? "is-closing" : ""}`}
+          role="presentation"
+          onPointerDown={() => closeConfirmDialog()}
+        >
           <section className="confirm-dialog" role="alertdialog" aria-modal="true" aria-label={confirmRequest.title} onPointerDown={(event) => event.stopPropagation()}>
             <h2>{confirmRequest.title}</h2>
             <p>{confirmRequest.message}</p>
             <div className="confirm-actions">
-              <button className="tool-button" type="button" onClick={() => setConfirmRequest(null)}>
+              <button className="tool-button" type="button" onClick={() => closeConfirmDialog()}>
                 取消
               </button>
               <button className="tool-button danger" type="button" onClick={runConfirm}>

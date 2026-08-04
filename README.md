@@ -1,104 +1,87 @@
 # Prompt Dock
 
-![](./assets/banner.png)
+![Prompt Dock banner](./assets/banner.png)
 
-Prompt Dock 是一个 Windows 桌面端 prompt 编辑器。它常驻后台，通过全局快捷键唤出纯净编辑窗口，帮助用户在任意输入场景中更舒服地编写、暂存、套用和提交 prompt。
+Prompt Dock 是一个 Windows 优先的桌面 prompt 编辑器。它常驻后台，通过全局快捷键唤出一个轻量编辑框，让你在任意写作、聊天、编程或 AI 工具使用场景里快速整理 prompt、调用模板、暂存草稿、复制提交和查看历史。
 
-当前版本：`1.0.0`
+当前版本：`1.1.0`
 
-## 核心能力
+## 功能概览
 
-- 全局唤起/隐藏编辑窗口：默认 `Ctrl + L`
-- 纯净编辑窗口：大文本框、顶部拖动条、右上角工作台入口和关闭按钮
-- 自动保存草稿：输入中的内容持续覆盖保存，下次打开自动恢复
-- 复制并退出：默认 `Ctrl + Enter`，写入历史、更新统计、清空编辑框并隐藏窗口
-- 指令窗口：默认 `Ctrl + P`，支持固定模板和暂存箱选择
-- 暂存箱：默认 `Ctrl + J`，把当前未完成 prompt 放入暂存箱并清空编辑框
-- 工作台：统计、模板、历史、暂存、外观、设置、关于集中管理
-- 主题系统：简约、水墨、极客三套主题系列，每套包含 3 个日间子主题和 2 个夜间子主题
-- 后台托盘运行：托盘菜单可打开编辑窗口、工作台或退出
-- 单实例运行：重复打开 exe 会唤起工作台
+- 全局唤起：默认 `Ctrl + L` 显示或隐藏编辑窗口。
+- 快速提交：默认 `Ctrl + Enter` 复制当前 prompt、写入历史、更新统计、清空编辑框并退出。
+- 暂存机制：默认 `Ctrl + J` 暂存并清除当前内容，默认 `Ctrl + S` 暂存/保存当前内容并保留编辑区。
+- 模板指令框：默认 `Ctrl + P` 打开模板选择，支持键盘上下移动和回车插入。
+- 工作台：集中管理统计、模板、历史、暂存、外观、设置和关于信息。
+- 历史检索：历史默认分页加载，每次 20 条，支持关键词包含检索和日期筛选。
+- 编辑器增强：支持行号、当前行高亮、编辑器背景图、编辑框宽高、透明度、窗口位置和置顶设置。
+- 快捷键设置：工作台里可修改快捷键，并对软件内已有快捷键做冲突检测。
+- 主题系统：内置简约、活泼、冰晶三套主题系列，每套包含 5 个子主题。
+- 托盘常驻：系统托盘可打开编辑窗口、工作台或退出应用。
+- 单实例运行：重复打开 exe 会唤起已有工作台窗口。
 
 ## 快捷键
 
-快捷键可在 `工作台 -> 设置` 中修改。编辑窗口中的 placeholder 会读取当前设置。
+快捷键可在 `工作台 -> 设置` 中修改。编辑窗口中的提示文案会读取当前快捷键设置。
 
 | 默认快捷键 | 作用 | 范围 |
 | --- | --- | --- |
 | `Ctrl + L` | 唤起或隐藏编辑窗口 | 全局 |
 | `Ctrl + Enter` | 复制当前 prompt、写入历史、清空编辑框并退出 | 编辑窗口 |
-| `Ctrl + P` | 打开指令窗口 | 编辑窗口 |
-| `Ctrl + J` | 暂存当前 prompt 并清空编辑框 | 编辑窗口 |
-| `Ctrl + Shift + S` | 将当前内容保存为固定模板 | 编辑窗口 |
-| `Ctrl + H` | 打开工作台并查看历史相关内容 | 编辑窗口 |
+| `Ctrl + P` | 打开模板选择指令框 | 编辑窗口 |
+| `Ctrl + S` | 暂存/保存当前内容，不清空编辑区 | 编辑窗口 |
+| `Ctrl + J` | 暂存当前内容并清空编辑区 | 编辑窗口 |
+| `Ctrl + Shift + S` | 保存当前内容为固定模板 | 编辑窗口 |
+| `Ctrl + H` | 打开工作台并查看历史 | 编辑窗口 |
 | `Ctrl + ,` | 打开工作台 | 编辑窗口 |
-| `Esc` | 先关闭命令弹层，再隐藏编辑窗口并保留草稿 | 编辑窗口 |
+| `Esc` | 先关闭弹层，再隐藏编辑窗口并保留内容 | 编辑窗口 |
 
-## 窗口设计
+## 窗口与工作流
 
 ### 编辑窗口
 
-编辑窗口用于高频写作。主体是无干扰文本框，placeholder 显示自动保存和快捷键提示；右上角有工作台按钮和红色叉号；底部信息栏显示保存状态、字符数、估算 token 和提交提示。
+编辑窗口用于高频写作。主体是一个无边框透明窗口，顶部细条可拖动，右上角提供工作台入口和关闭按钮，底部状态栏显示保存状态、字数、估算 token 和提交提示。
 
-编辑窗口无系统标题栏，可以通过顶部细拖动条移动。窗口通过全局快捷键唤起时会恢复设置中的尺寸、居中显示并聚焦。
+编辑窗口会自动保存草稿。关闭窗口不会丢失内容；再次唤起时会恢复上一次输入。工作台外观设置中可以调整编辑框宽度、高度、透明度、窗口位置、是否置顶、是否显示行号、是否高亮当前行，以及编辑器背景图片。
 
-### 工作台
+### 模板指令框
 
-工作台用于低频管理，采用左侧导航和右侧内容栏。
-
-当前 tab 顺序：
-
-1. 统计
-2. 模板
-3. 历史
-4. 暂存
-5. 外观
-6. 设置
-7. 关于
-
-## 功能说明
-
-### 统计
-
-- 按天统计 prompt 总字数和总条数
-- 展示总条数、总字数、平均字数、最长 prompt 等概览
-- 统计模板使用频率
-- 暂存内容不纳入统计，只有 `Ctrl + Enter` 提交的 prompt 会计入
-
-### 模板
-
-- 固定模板，不做变量填充
-- 支持新增、编辑、复制、删除
-- 支持置顶，置顶模板会在工作台和指令窗口优先显示
-
-### 历史
-
-- 仅在提交时新增历史
-- 支持单条查看、复制、保存为模板、删除
-- 支持清理所有历史，危险操作需要二次确认
-- 历史保留数量可配置，范围 `30-3000`，默认 `200`
+在编辑窗口按 `Ctrl + P` 打开指令框。根层包含“暂存箱”入口和固定模板列表，支持搜索、键盘上下选择、回车插入。模板可在工作台里新增、编辑、复制、删除和置顶。
 
 ### 暂存
 
-- 可保存多个未完成 prompt
-- 指令窗口中有“暂存箱”入口，可键盘选择续写
-- 工作台暂存 tab 可查看、展开/收起、书写、删除
-- 续写暂存时，如果编辑框已有内容，会先把当前内容挤入暂存箱
+暂存适合保存尚未完成的 prompt：
 
-### 外观
+- `Ctrl + S`：保存当前内容到暂存箱，编辑区保持原样，并在顶部显示 1 秒提示。
+- `Ctrl + J`：保存当前内容到暂存箱，然后清空编辑区。
+- 工作台 `暂存` 页支持查看、展开/收起、继续书写和删除。
+- 从暂存继续书写时，如果编辑区已有内容，会先把当前内容放入暂存箱。
 
-- 支持三套主题系列：简约、水墨、极客
-- 每套主题系列包含 5 个子主题：3 个日间、2 个夜间
-- 主题会影响配色、背景纹理、面板材质、边框、阴影、按钮和选中文本样式
-- 支持设置编辑框透明度和编辑框宽高
+### 历史
+
+历史只记录通过 `Ctrl + Enter` 提交的 prompt。工作台 `历史` 页默认显示 20 条，底部按钮可继续加载更多。历史支持关键词包含检索和日期筛选，可查看详情、复制、保存为模板或删除。
+
+### 统计
+
+统计页展示 prompt 提交行为，包括热力图、模板使用频率、总提示词数、总字数、平均字数和最长 prompt 等信息。暂存内容不会进入统计。
+
+## 主题
+
+Prompt Dock 有三套视觉主题系列：
+
+- 简约：克制留白、纸面质感和清晰线条。
+- 活泼：粗描边、彩色胶片、鲜亮背景和更强的卡片感。
+- 冰晶：冰面折射、极光微光、通透晶格和半透明组件。
+
+每个系列包含 5 个子主题，覆盖日间和夜间配色。主题会影响工作台、编辑窗口、指令框、模板列表、按钮、选中态、背景纹理和文本选区。
 
 ## 技术栈
 
 - 桌面框架：Tauri 2
 - 前端：React 18 + TypeScript + Vite
-- 原生能力：Rust command、Tauri tray、global shortcut、single instance
+- 原生能力：Rust command、系统托盘、全局快捷键、单实例运行、窗口位置控制
 - 图标：lucide-react + Tauri icon assets
-- 数据存储：当前使用 localStorage
+- 数据存储：localStorage + IndexedDB 背景图存储
 - 目标平台：Windows
 
 ## 开发
@@ -109,7 +92,7 @@ Prompt Dock 是一个 Windows 桌面端 prompt 编辑器。它常驻后台，通
 npm.cmd install
 ```
 
-启动前端开发服务器：
+启动前端开发服务：
 
 ```powershell
 npm.cmd run dev
@@ -121,9 +104,13 @@ npm.cmd run dev
 npm.cmd run tauri -- dev
 ```
 
-## 构建桌面端
+前端生产构建：
 
-生成可测试的 Windows 桌面程序：
+```powershell
+npm.cmd run build
+```
+
+打包桌面端：
 
 ```powershell
 npm.cmd run tauri -- build
@@ -132,32 +119,42 @@ npm.cmd run tauri -- build
 常见产物位置：
 
 - `src-tauri/target/release/prompt-dock.exe`
-- `src-tauri/target/release/bundle/nsis/Prompt Dock_1.0.0_x64-setup.exe`
-- `src-tauri/target/release/bundle/msi/Prompt Dock_1.0.0_x64_en-US.msi`
+- `src-tauri/target/release/bundle/nsis/Prompt Dock_1.1.0_x64-setup.exe`
+- `src-tauri/target/release/bundle/msi/Prompt Dock_1.1.0_x64_en-US.msi`
 
-## 开发验收规则
-
-后续每次完成功能或修复后，默认执行：
+如果本地正在运行 release exe，Windows 可能会锁定 `prompt-dock.exe`。关闭正在运行的应用后重新构建，或临时指定备用 target 目录：
 
 ```powershell
-npm.cmd run tauri -- build
+$env:CARGO_TARGET_DIR='E:\code\github\prompt-dock\src-tauri\target-codex'
+npm.cmd run tauri -- build --bundles nsis
 ```
-
-验收目标是产出可测试的桌面 exe。文档类改动可以只做文本检查；功能或修复类改动需要完成桌面端构建，并在结果中说明构建是否通过以及产物位置。
 
 ## 项目结构
 
 ```text
 .
-├─ docs/
-│  └─ demandlist.md
+├─ assets/
+│  └─ banner.png
+├─ scripts/
+│  └─ dev-server.ps1
 ├─ src/
 │  ├─ components/
+│  │  ├─ EditWindow.tsx
+│  │  ├─ ManageWindow.tsx
+│  │  └─ TemplatePalette.tsx
 │  ├─ data/
+│  │  ├─ defaults.ts
+│  │  └─ themeCatalog.ts
 │  ├─ lib/
+│  │  ├─ desktop.ts
+│  │  ├─ editorBackgroundStore.ts
+│  │  ├─ persistence.ts
+│  │  └─ shortcuts.ts
 │  ├─ styles/
+│  │  └─ app.css
 │  ├─ App.tsx
-│  └─ main.tsx
+│  ├─ main.tsx
+│  └─ types.ts
 ├─ src-tauri/
 │  ├─ capabilities/
 │  ├─ icons/
@@ -168,4 +165,27 @@ npm.cmd run tauri -- build
 ├─ codex.md
 ├─ package.json
 └─ README.md
+```
+
+## 发布
+
+当前版本号需要同时维护：
+
+- `package.json`
+- `package-lock.json`
+- `src-tauri/Cargo.toml`
+- `src-tauri/Cargo.lock`
+- `src-tauri/tauri.conf.json`
+
+发布前建议执行：
+
+```powershell
+npm.cmd run tauri -- build
+```
+
+创建 tag 示例：
+
+```powershell
+git tag -a v1.1.0 -m "v1.1.0"
+git push origin v1.1.0
 ```
