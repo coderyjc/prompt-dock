@@ -1,6 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::{process::Command, str::FromStr, sync::Mutex};
+use std::{collections::BTreeSet, process::Command, str::FromStr, sync::Mutex};
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, TrayIconBuilder, TrayIconEvent},
@@ -9,6 +9,12 @@ use tauri::{
     WebviewWindow, WindowEvent,
 };
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
+
+#[cfg(windows)]
+use winreg::{
+    enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE},
+    HKEY, RegKey,
+};
 
 struct ToggleShortcutState(Mutex<Shortcut>);
 struct EditWindowSizeState(Mutex<(u32, u32)>);
@@ -40,6 +46,47 @@ fn parse_edit_window_placement(value: &str) -> EditWindowPlacement {
         "last" => EditWindowPlacement::Last,
         _ => EditWindowPlacement::Center,
     }
+}
+
+#[cfg(windows)]
+fn add_font_registry_name(value_name: &str, fonts: &mut BTreeSet<String>) {
+    let face_name = value_name
+        .rsplit_once(" (")
+        .map(|(name, _)| name)
+        .unwrap_or(value_name);
+
+    for part in face_name.split(" & ") {
+        let name = part.trim().trim_start_matches('@').trim();
+        if name.len() >= 2 {
+            fonts.insert(name.to_string());
+        }
+    }
+}
+
+#[cfg(windows)]
+fn collect_registry_fonts(root: HKEY, fonts: &mut BTreeSet<String>) {
+    let root = RegKey::predef(root);
+    let Ok(key) = root.open_subkey("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Fonts") else {
+        return;
+    };
+
+    for value in key.enum_values().flatten() {
+        add_font_registry_name(&value.0, fonts);
+    }
+}
+
+fn fallback_system_fonts() -> Vec<String> {
+    [
+        "Cascadia Mono",
+        "Consolas",
+        "Microsoft YaHei",
+        "Microsoft YaHei UI",
+        "Segoe UI",
+        "SimSun",
+    ]
+    .into_iter()
+    .map(String::from)
+    .collect()
 }
 
 fn clamp_edit_window_size(width: u32, height: u32) -> (u32, u32) {
@@ -180,6 +227,27 @@ fn open_external_url(url: String) -> Result<(), String> {
 #[tauri::command]
 fn submit_prompt(text: String) -> Result<(), String> {
     copy_prompt(text)
+}
+
+#[tauri::command]
+fn list_system_fonts() -> Vec<String> {
+    #[cfg(windows)]
+    {
+        let mut fonts = BTreeSet::new();
+        collect_registry_fonts(HKEY_LOCAL_MACHINE, &mut fonts);
+        collect_registry_fonts(HKEY_CURRENT_USER, &mut fonts);
+
+        for font in fallback_system_fonts() {
+            fonts.insert(font);
+        }
+
+        return fonts.into_iter().collect();
+    }
+
+    #[cfg(not(windows))]
+    {
+        fallback_system_fonts()
+    }
 }
 
 #[tauri::command]
@@ -418,6 +486,7 @@ fn main() {
             hide_edit_window,
             set_edit_window_size,
             set_edit_window_layout,
+            list_system_fonts,
             set_global_toggle_shortcut
         ])
         .on_window_event(|window, event| {

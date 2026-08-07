@@ -34,7 +34,7 @@ import {
 } from "react";
 import { defaultShortcuts } from "../data/defaults";
 import { visualThemeSeries } from "../data/themeCatalog";
-import { copyText, openExternalUrl, startWindowDrag } from "../lib/desktop";
+import { copyText, listSystemFonts, openExternalUrl, startWindowDrag } from "../lib/desktop";
 import { deleteEditorBackgroundImage, loadEditorBackgroundImageUrl, saveEditorBackgroundImage } from "../lib/editorBackgroundStore";
 import { formatKeyboardShortcut } from "../lib/shortcuts";
 import { storageKeys } from "../lib/persistence";
@@ -111,6 +111,8 @@ const historyPageSize = 20;
 const historyModalCloseMs = 240;
 const confirmDialogCloseMs = 240;
 const shortcutModifierOrder = ["ctrl", "alt", "shift", "win"];
+const fallbackFontFamilies = ["Cascadia Mono", "Consolas", "Microsoft YaHei", "Microsoft YaHei UI", "Segoe UI", "SimSun"];
+const defaultEditorFontStack = `"Cascadia Mono", "SFMono-Regular", Consolas, monospace`;
 
 const isSection = (value: string | null): value is Section => {
   return navItems.some((item) => item.id === value);
@@ -173,6 +175,14 @@ const makeBackgroundPreviewStyle = (settings: SettingsState) =>
     ...makeBackgroundStyle(settings),
     aspectRatio: `${settings.editWindowWidth} / ${settings.editWindowHeight}`
   }) as CSSProperties;
+
+const makeFontPreviewStack = (fontFamily: string) => {
+  const name = fontFamily.trim().replace(/["\\]/g, "");
+  return name ? `"${name}", ${defaultEditorFontStack}` : defaultEditorFontStack;
+};
+
+const sortFontFamilies = (fonts: string[]) =>
+  [...fonts].sort((left, right) => left.localeCompare(right, "zh-CN", { sensitivity: "base" }));
 
 const buildStatsModel = (promptStats: PromptStatItem[], templates: TemplateItem[]) => {
   const sortedStats = [...promptStats].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
@@ -276,6 +286,8 @@ export function ManageWindow({
   const [heatTooltip, setHeatTooltip] = useState<HeatTooltipState | null>(null);
   const [expandedStashIds, setExpandedStashIds] = useState<Set<string>>(() => new Set());
   const [backgroundPreviewUrl, setBackgroundPreviewUrl] = useState("");
+  const [systemFonts, setSystemFonts] = useState<string[]>(fallbackFontFamilies);
+  const [systemFontsLoading, setSystemFontsLoading] = useState(true);
   const [navIndicator, setNavIndicator] = useState({ top: 0, height: 0 });
   const navRef = useRef<HTMLElement | null>(null);
   const backgroundFileInputRef = useRef<HTMLInputElement | null>(null);
@@ -573,6 +585,22 @@ export function ManageWindow({
       window.clearTimeout(historyClearTimer.current);
       window.clearTimeout(historyModalCloseTimer.current);
       window.clearTimeout(confirmCloseTimer.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    void listSystemFonts().then((fonts) => {
+      if (!active) return;
+
+      const nextFonts = fonts.length > 0 ? fonts : fallbackFontFamilies;
+      setSystemFonts(sortFontFamilies(nextFonts));
+      setSystemFontsLoading(false);
+    });
+
+    return () => {
+      active = false;
     };
   }, []);
 
@@ -1211,6 +1239,14 @@ export function ManageWindow({
                 onRemove={removeBackgroundImage}
               />
             ) : null}
+            <EditorTypographySetting
+              fontFamily={settings.editorFontFamily}
+              fontSize={settings.editorFontSize}
+              fonts={systemFonts}
+              loading={systemFontsLoading}
+              onFontFamilyChange={(value) => onSettingsChange({ ...settings, editorFontFamily: value })}
+              onFontSizeChange={(value) => onSettingsChange({ ...settings, editorFontSize: value })}
+            />
             <div className="setting-row editor-measure-row" role="group" aria-label="编辑框尺寸与透明度">
               <CompactNumberSetting
                 label="宽度"
@@ -1576,6 +1612,91 @@ function BackgroundImageControls({
             移除背景
           </button>
         </div>
+      </div>
+    </section>
+  );
+}
+
+function EditorTypographySetting({
+  fontFamily,
+  fontSize,
+  fonts,
+  loading,
+  onFontFamilyChange,
+  onFontSizeChange
+}: {
+  fontFamily: string;
+  fontSize: number;
+  fonts: string[];
+  loading: boolean;
+  onFontFamilyChange: (value: string) => void;
+  onFontSizeChange: (value: number) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const fontOptions = useMemo(() => {
+    return sortFontFamilies(Array.from(new Set([...fallbackFontFamilies, fontFamily, ...fonts].filter(Boolean))));
+  }, [fontFamily, fonts]);
+  const visibleFonts = useMemo(() => {
+    const text = query.trim().toLowerCase();
+    const matched = text ? fontOptions.filter((font) => font.toLowerCase().includes(text)) : fontOptions;
+    return matched.slice(0, 48);
+  }, [fontOptions, query]);
+
+  const selectFont = (value: string) => {
+    onFontFamilyChange(value);
+    setQuery("");
+  };
+
+  return (
+    <section className="editor-font-panel" aria-label="编辑器字体">
+      <div className="editor-font-toolbar">
+        <label className="editor-font-search">
+          <span>编辑器字体</span>
+          <span className="font-search-input">
+            <Search size={15} />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && visibleFonts[0]) {
+                  event.preventDefault();
+                  selectFont(visibleFonts[0]);
+                }
+              }}
+              placeholder={loading ? "读取系统字体" : "搜索设备字体"}
+            />
+          </span>
+        </label>
+        <CompactNumberSetting
+          label="编辑器字号"
+          value={fontSize}
+          min={12}
+          max={28}
+          unit="px"
+          onChange={onFontSizeChange}
+        />
+        <div className="editor-font-current" style={{ fontFamily: makeFontPreviewStack(fontFamily) }}>
+          <span>当前</span>
+          <strong>{fontFamily}</strong>
+        </div>
+      </div>
+      <div className="editor-font-choice-list">
+        {visibleFonts.length > 0 ? (
+          visibleFonts.map((font) => (
+            <button
+              className={`editor-font-choice ${font === fontFamily ? "is-active" : ""}`}
+              type="button"
+              key={font}
+              onClick={() => selectFont(font)}
+              style={{ fontFamily: makeFontPreviewStack(font) }}
+            >
+              <span>{font}</span>
+              <small>Aa 字</small>
+            </button>
+          ))
+        ) : (
+          <div className="editor-font-empty">没有匹配字体</div>
+        )}
       </div>
     </section>
   );

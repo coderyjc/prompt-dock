@@ -63,6 +63,8 @@ const mergeSettingsWithDefaults = (items: SettingsState) => {
     editOpacity: clampNumber(Math.round(partial.editOpacity ?? defaultSettings.editOpacity), 35, 100, defaultSettings.editOpacity),
     editWindowWidth: clampNumber(Math.round(partial.editWindowWidth ?? defaultSettings.editWindowWidth), 520, 1600, defaultSettings.editWindowWidth),
     editWindowHeight: clampNumber(Math.round(partial.editWindowHeight ?? defaultSettings.editWindowHeight), 360, 1000, defaultSettings.editWindowHeight),
+    editorFontSize: clampNumber(Math.round(partial.editorFontSize ?? defaultSettings.editorFontSize), 12, 28, defaultSettings.editorFontSize),
+    editorFontFamily: typeof partial.editorFontFamily === "string" && partial.editorFontFamily.trim() ? partial.editorFontFamily.trim() : defaultSettings.editorFontFamily,
     editorLineNumbers: typeof partial.editorLineNumbers === "boolean" ? partial.editorLineNumbers : defaultSettings.editorLineNumbers,
     editorCurrentLineHighlight: typeof partial.editorCurrentLineHighlight === "boolean" ? partial.editorCurrentLineHighlight : defaultSettings.editorCurrentLineHighlight,
     editAlwaysOnTop: typeof partial.editAlwaysOnTop === "boolean" ? partial.editAlwaysOnTop : defaultSettings.editAlwaysOnTop,

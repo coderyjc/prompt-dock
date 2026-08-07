@@ -213,8 +213,9 @@ kbd {
   inset: 0 0 2.05rem;
   width: 100%;
   --editor-font-size: 1rem;
+  --editor-font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
   --editor-line-height: 1.72;
-  --editor-line-height-size: 1.72rem;
+  --editor-line-height-size: 1.72em;
   --editor-padding-top: 3.75rem;
   --editor-padding-right: 3.1rem;
   --editor-padding-bottom: 0.9rem;
@@ -240,7 +241,7 @@ kbd {
   padding: var(--editor-padding-top) var(--editor-padding-right) var(--editor-padding-bottom) var(--editor-padding-left);
   color: var(--text);
   background: transparent;
-  font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+  font-family: var(--editor-font-family);
   font-size: var(--editor-font-size);
   line-height: var(--editor-line-height);
   line-break: auto;
@@ -270,7 +271,7 @@ kbd {
   overflow: hidden;
   padding: var(--editor-padding-top) var(--editor-padding-right) var(--editor-padding-bottom) var(--editor-padding-left);
   color: transparent;
-  font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+  font-family: var(--editor-font-family);
   font-size: var(--editor-font-size);
   line-height: var(--editor-line-height);
   pointer-events: none;
@@ -487,7 +488,7 @@ kbd {
   background: var(--accent);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent);
   transform-origin: left center;
-  animation: edit-save-toast-progress 1000ms linear forwards;
+  animation: edit-save-toast-progress 3600ms linear forwards;
 }
 
 .edit-corner-actions {
@@ -2156,6 +2157,181 @@ textarea:focus-visible {
 
 .background-inline-actions .tool-button {
   flex: 0 0 auto;
+}
+
+.editor-font-panel {
+  display: grid;
+  gap: 0.65rem;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-solid);
+  transition:
+    transform var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-mid) var(--ease-standard),
+    background var(--motion-mid) var(--ease-standard),
+    box-shadow var(--motion-mid) var(--ease-standard);
+}
+
+.editor-font-panel:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--accent) 24%, var(--line));
+  box-shadow: 0 12px 26px rgba(22, 31, 29, 0.07);
+}
+
+.editor-font-toolbar {
+  display: grid;
+  grid-template-columns: minmax(14rem, 1fr) minmax(7rem, 0.28fr) minmax(10rem, 0.36fr);
+  align-items: stretch;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.editor-font-search {
+  display: grid;
+  align-content: center;
+  gap: 0.34rem;
+  min-width: 0;
+}
+
+.editor-font-search > span:first-child,
+.editor-font-current span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 680;
+}
+
+.font-search-input {
+  display: flex;
+  min-width: 0;
+  height: 2rem;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-muted);
+  padding: 0 0.58rem;
+  color: var(--muted);
+  transition:
+    border-color var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard);
+}
+
+.font-search-input:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 52%, var(--line));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent-strong);
+}
+
+.font-search-input input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+}
+
+.editor-font-current {
+  display: grid;
+  align-content: center;
+  gap: 0.28rem;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-muted);
+  padding: 0.45rem 0.68rem;
+}
+
+.editor-font-current strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 0.96rem;
+  font-weight: 680;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editor-font-choice-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
+  gap: 0.45rem;
+  max-height: 9.3rem;
+  min-width: 0;
+  overflow: auto;
+  padding-right: 0.15rem;
+}
+
+.editor-font-choice {
+  display: flex;
+  min-width: 0;
+  min-height: 2.35rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-muted);
+  color: var(--text);
+  cursor: pointer;
+  padding: 0 0.62rem;
+  text-align: left;
+  transition:
+    transform var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-mid) var(--ease-standard),
+    background var(--motion-mid) var(--ease-standard),
+    box-shadow var(--motion-mid) var(--ease-standard),
+    color var(--motion-mid) var(--ease-standard);
+}
+
+.editor-font-choice:hover,
+.editor-font-choice:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--line));
+  background: color-mix(in srgb, var(--accent-soft) 72%, var(--surface-muted));
+  box-shadow: 0 8px 18px rgba(22, 31, 29, 0.06);
+  transform: translateY(-1px);
+}
+
+.editor-font-choice:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 66%, transparent);
+  outline-offset: 2px;
+}
+
+.editor-font-choice.is-active {
+  border-color: color-mix(in srgb, var(--accent) 46%, var(--line));
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  box-shadow: 0 10px 24px rgba(22, 31, 29, 0.07);
+}
+
+.editor-font-choice span {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 0.92rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editor-font-choice small {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 680;
+}
+
+.editor-font-empty {
+  display: grid;
+  min-height: 2.4rem;
+  place-items: center;
+  border: 1px dashed var(--line);
+  border-radius: 7px;
+  color: var(--muted);
+  font-size: 0.82rem;
 }
 
 .shortcut-row {

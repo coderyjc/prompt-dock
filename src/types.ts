@@ -57,6 +57,8 @@ export type SettingsState = {
   editOpacity: number;
   editWindowWidth: number;
   editWindowHeight: number;
+  editorFontSize: number;
+  editorFontFamily: string;
   editorLineNumbers: boolean;
   editorCurrentLineHighlight: boolean;
   editAlwaysOnTop: boolean;

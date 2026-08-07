@@ -32,11 +32,18 @@ const estimateTokens = (value: string) => {
 };
 
 const getLineIndexAtCaret = (value: string, caret: number) => value.slice(0, caret).split("\n").length - 1;
+const stashNoticeDurationMs = 3600;
 const zeroWidthSpace = "\u200b";
+const defaultEditorFontStack = `"Cascadia Mono", "SFMono-Regular", Consolas, monospace`;
 
 const readPixelValue = (value: string, fallback: number) => {
   const numeric = Number.parseFloat(value);
   return Number.isFinite(numeric) ? numeric : fallback;
+};
+
+const makeEditorFontStack = (fontFamily: string) => {
+  const name = fontFamily.trim().replace(/["\\]/g, "");
+  return name ? `"${name}", ${defaultEditorFontStack}` : defaultEditorFontStack;
 };
 
 export function EditWindow({
@@ -110,6 +117,10 @@ export function EditWindow({
     "--editor-background-x": `${settings.editorBackgroundX}%`,
     "--editor-background-y": `${settings.editorBackgroundY}%`
   } as CSSProperties;
+  const editorStyle = {
+    "--editor-font-size": `${settings.editorFontSize}px`,
+    "--editor-font-family": makeEditorFontStack(settings.editorFontFamily)
+  } as CSSProperties;
   const shortcutById = useMemo(() => {
     return new Map(shortcuts.map((shortcut) => [shortcut.id, shortcut.keys]));
   }, [shortcuts]);
@@ -144,7 +155,7 @@ export function EditWindow({
 
     const id = Date.now();
     setStashNotice({ id, message });
-    stashNoticeTimerRef.current = window.setTimeout(() => hideStashNotice(id), 1100);
+    stashNoticeTimerRef.current = window.setTimeout(() => hideStashNotice(id), stashNoticeDurationMs + 100);
   }, [hideStashNotice]);
 
   const syncEditorViewport = useCallback(
@@ -420,7 +431,7 @@ export function EditWindow({
         </button>
       </div>
 
-      <div className={editorFrameClass} onPointerDown={(event) => event.stopPropagation()}>
+      <div className={editorFrameClass} style={editorStyle} onPointerDown={(event) => event.stopPropagation()}>
         <div ref={caretMirrorRef} className="editor-caret-mirror" aria-hidden="true" />
         {settings.editorCurrentLineHighlight ? (
           <div

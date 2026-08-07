@@ -39,6 +39,14 @@ export const setEditWindowLayout = async (width: number, height: number, placeme
   }
 };
 
+export const listSystemFonts = async () => {
+  try {
+    return await invokeCommand<string[]>("list_system_fonts");
+  } catch {
+    return ["Cascadia Mono", "Consolas", "Microsoft YaHei", "Microsoft YaHei UI", "Segoe UI", "SimSun"];
+  }
+};
+
 export const copyText = async (text: string) => {
   try {
     await invokeCommand("copy_prompt", { text });

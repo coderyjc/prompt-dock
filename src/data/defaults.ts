@@ -95,6 +95,8 @@ export const defaultSettings: SettingsState = {
   editOpacity: 100,
   editWindowWidth: 760,
   editWindowHeight: 520,
+  editorFontSize: 16,
+  editorFontFamily: "Cascadia Mono",
   editorLineNumbers: true,
   editorCurrentLineHighlight: true,
   editAlwaysOnTop: true,
